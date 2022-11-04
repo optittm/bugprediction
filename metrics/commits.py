@@ -7,10 +7,12 @@ from configuration import Configuration
 from models.version import Version
 from models.commit import Commit
 from utils.timeit import timeit
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
 
-
+@inject
 @timeit
-def compute_commit_msg_quality(session, version:Version):
+def compute_commit_msg_quality(session, version:Version, config : Configuration = Provide[Container.configuration]):
     """
     Compute the message quality for a given version
 
@@ -26,7 +28,7 @@ def compute_commit_msg_quality(session, version:Version):
             0      br          3
             1    link          2
     """
-    configuration = Configuration()
+    configuration = config
     project_id = version.project_id
     commits = session.query(Commit.message).filter(Commit.date.between(version.start_date, version.end_date)) \
         .filter(Commit.project_id == project_id).all()

@@ -16,6 +16,8 @@ from models.author import Author
 from models.alias import Alias
 from utils.timeit import timeit
 from metrics.versions import compute_version_metrics
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
 
 class GitConnector(ABC):
     """Connector to Github
@@ -29,15 +31,16 @@ class GitConnector(ABC):
      - project_id   Identifier of the project
      - directory    Folder (temporary) where the project is cloned
     """
-
-    def __init__(self, token, repo, current, session, project_id, directory):
+    
+    @inject
+    def __init__(self, token, repo, current, session, project_id, directory, config : Configuration = Provide[Container.configuration]):
         self.token = token
         self.repo = repo
         self.current = current
         self.session = session
         self.project_id = project_id
         self.directory = directory
-        self.configuration = Configuration()
+        self.configuration = config
 
     @timeit
     def setup_aliases(self, aliases):

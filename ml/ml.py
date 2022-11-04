@@ -9,6 +9,8 @@ from sqlalchemy import and_
 from utils.timeit import timeit
 from models.model import Model
 from configuration import Configuration
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
 
 
 class ml(ABC):
@@ -23,14 +25,15 @@ class ml(ABC):
      - model            The current model
      - mse              Mean Square Error of the current model
     """
-
-    def __init__(self, session, project_id):
+    
+    @inject
+    def __init__(self, session, project_id, config : Configuration = Provide[Container.configuration]):
         self.model = None
         self.name = None
         self.mse = None
         self.session = session
         self.project_id = project_id
-        self.configuration = Configuration()
+        self.configuration = config
 
     @timeit
     def store(self):

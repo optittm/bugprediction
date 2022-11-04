@@ -15,7 +15,8 @@ from models.author import Author
 from models.ownership import Ownership
 from utils.database import save_file_if_not_found
 from configuration import Configuration
-
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
 
 class CodeMaatConnector:
     """
@@ -28,11 +29,13 @@ class CodeMaatConnector:
         - session     Connection to a database managed by sqlalchemy
         - version     Sqlalchemy object representing a Version
     """
-    def __init__(self, directory, session, version):
+
+    @inject
+    def __init__(self, directory, session, version, config : Configuration = Provide[Container.configuration]):
         self.directory = directory
         self.session = session
         self.version = version
-        self.configuration = Configuration()
+        self.configuration = config
 
     def analyze_git_log(self):
         """Populate the database from the GitHub API"""

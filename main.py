@@ -15,7 +15,7 @@ from sqlalchemy.exc import ArgumentError
 from dependency_injector.wiring import Provide, inject
 from dotenv import load_dotenv
 
-from container import Container
+from utils.container import Container
 from configuration import Configuration
 from exceptions.configurationvalidation import ConfigurationValidationException
 from exporters.ml_reports import MlHtmlExporter
@@ -257,18 +257,14 @@ def populate(ctx, skip_versions):
 
         with TmpDirCopyFilteredWithEnv(repo_dir) as tmp_work_dir:
 
-            legacy = LegacyConnector(
-                session,
-                project.project_id,
-                repo_dir,
-                version
-            )
+            
             # FIXME : this execution is dependent from previous version
             # So if some versions are ignored in config, the result is wrong 
+            legacy = LegacyConnector(session, project.project_id, repo_dir, version)
             legacy.get_legacy_files(version)
 
             # Get statistics from git log with codemaat
-            # codemaat = CodeMaatConnector(repo_dir, session, version)
+            # codemaat = CodeMaatConnector(repo_dir, session, version, config = Provide[Container.configuration])
             # codemaat.analyze_git_log()
 
             # Get metrics with CK
@@ -292,8 +288,19 @@ if __name__ == '__main__':
     try:
         load_dotenv()
         configuration = Configuration()
-        # container = Container()
-        # container.wire(modules=[__name__])
+        container = Container()
+        container.init_resources()
+        container.wire(modules=[
+        __name__,
+        "connectors.ck",
+        "connectors.legacy",
+        "connectors.codemaat",
+        "connectors.git",
+        "connectors.jpeek",
+        "ml.ml",
+        "metrics.commits",
+        "importers.flatfile",
+        ])
 
         logging.basicConfig(level=configuration.log_level)
         logging.info('python: ' + platform.python_version())

@@ -5,11 +5,14 @@ import tempfile
 from asyncio import sleep
 from os.path import exists
 import pandas as pd
-
 from configuration import Configuration
 from models.metric import Metric
 from utils.math import Math
 from utils.timeit import timeit
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
+
+
 
 
 class CkConnector:
@@ -23,12 +26,12 @@ class CkConnector:
         - session     Connection to a database managed by sqlalchemy
         - version     Sqlalchemy object representing a Version
     """
-
-    def __init__(self, directory, session, version):
+    @inject
+    def __init__(self, directory, session, version, config : Configuration = Provide[Container.configuration]):
         self.directory = directory
         self.session = session
         self.version = version
-        self.configuration = Configuration()
+        self.configuration = config
 
     def analyze_source_code(self):
         """

@@ -7,6 +7,8 @@ import tempfile
 from configuration import Configuration
 from models.metric import Metric
 from utils.timeit import timeit
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
 
 class JPeekConnector:
     """
@@ -19,12 +21,12 @@ class JPeekConnector:
         - session     Connection to a database managed by sqlalchemy
         - version     Sqlalchemy object representing a Version
     """
-
-    def __init__(self, directory, session, version) -> None:
+    @inject
+    def __init__(self, directory, session, version, config : Configuration = Provide[Container.configuration]) -> None:
         self.directory = directory
         self.session = session
         self.version = version
-        self.configuration = Configuration()
+        self.configuration = config
 
     def analyze_source_code(self):
         """
