@@ -259,27 +259,29 @@ def populate(ctx, skip_versions):
                                  cwd=repo_dir)
         logging.info('Executed command line: ' + ' '.join(process.args))
 
-        with TmpDirCopyFilteredWithEnv(repo_dir) as tmp_work_dir:
-
-            # FIXME : this execution is dependent from previous version
+        #with TmpDirCopyFilteredWithEnv(repo_dir) as tmp_work_dir:
+        tmp_work_dir = "../jpeek"
+        # FIXME : this execution is dependent from previous version
+        # So if some versions are ignored in config, the result is wrong 
             # So if some versions are ignored in config, the result is wrong 
-            legacy.get_legacy_files(version)
+        # So if some versions are ignored in config, the result is wrong 
+        #legacy.get_legacy_files(version)
 
-            # Get statistics from git log with codemaat
-            # codemaat = CodeMaatConnector(repo_dir, session, version)
-            # codemaat.analyze_git_log()
+        # Get statistics from git log with codemaat
+        # codemaat = CodeMaatConnector(repo_dir, session, version)
+        # codemaat.analyze_git_log()
 
-            # Get metrics with CK
-            ck = CkConnector(directory=tmp_work_dir, session=session, version=version)
-            ck.analyze_source_code()
+        # Get metrics with CK
+        ck = CkConnector(directory=tmp_work_dir, session=session, version=version)
+        ck.analyze_source_code()
 
-            # Get statistics with lizard
-            lizard = FileAnalyzer(directory=tmp_work_dir, session=session, version=version)
-            lizard.analyze_source_code()
+        # Get statistics with lizard
+        lizard = FileAnalyzer(directory=tmp_work_dir, session=session, version=version)
+        #lizard.analyze_source_code()
 
-            # Get metrics with JPeek
-            # jp = JPeekConnector(directory=tmp_work_dir, session=session, version=version)
-            # jp.analyze_source_code()
+        # Get metrics with JPeek
+        # jp = JPeekConnector(directory=tmp_work_dir, session=session, version=version)
+        # jp.analyze_source_code()
 
 @click.command()
 @inject
