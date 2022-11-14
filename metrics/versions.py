@@ -93,8 +93,17 @@ def compute_version_metrics(session, repo_dir:str, project_id:int):
         churn_count = 0
         for file_count in files_count.values():
             churn_count += abs(file_count)
-        churn_avg = abs(mt.Math.get_rounded_mean(list(files_avg.values())))
-        churn_max = max(list(files_max.values()))
+
+        if files_avg:
+            churn_avg = abs(mt.Math.get_rounded_mean(list(files_avg.values())))
+        else:
+            churn_avg = 0
+
+        if files_max:
+            churn_max = max(list(files_max.values()))
+        else:
+            churn_max = 0
+
         logging.info('Chrun count: ' + str(churn_count) + ' / Chrun avg: ' + str(churn_avg) + ' / Chrun max: ' + str(churn_max))
         from_commit = version.tag
 
