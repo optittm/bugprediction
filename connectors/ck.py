@@ -57,21 +57,16 @@ class CkConnector:
         we need to compute the average for the repository.
         """
         logging.info('CK::compute_metrics')
-        # Read csv files
-
-        # with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_dir=""
-        # Launch the CK utility and output values into a temporary directory
         logging.info('CK::generate_ck_files')
+
+        tmp_dir = tempfile.mkdtemp()
         exclude_dir = ""
         for folder in self.configuration.exclude_folders:
             exclude_dir += self.directory + folder + " "
         
-        print("self.directory: ", self.directory)
         process = subprocess.run([self.configuration.java_path, "-jar",
                                     self.configuration.code_ck_path,
-                                #   self.directory, "True", "0", "True", os.path.join(tmp_dir, ''), exclude_dir])
-                                    self.directory, "True", "0", "True"])
+                                    self.directory, "True", "0", "True", os.path.join(tmp_dir, "")])
         logging.info('Executed command line: ' + ' '.join(process.args))
         logging.info('Command return code ' + str(process.returncode))
 
