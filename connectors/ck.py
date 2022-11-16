@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 import tempfile
+import shutil
 from asyncio import sleep
 from os.path import exists
 import pandas as pd
@@ -134,3 +135,6 @@ class CkConnector:
                 logging.error("An error occurred while reading CK report for version " + self.version.tag)
             else:
                 logging.error("An error occurred while generating CK report for version " + self.version.tag)
+            
+        shutil.rmtree(tmp_dir)
+        logging.info("Temporary files in " + tmp_dir + " removed")
