@@ -31,7 +31,7 @@ class CodeMaatConnector:
     """
 
     @inject
-    def __init__(self, directory, session, version, config : Configuration = Provide[Container.configuration]):
+    def __init__(self, directory, version, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
         self.directory = directory
         self.session = session
         self.version = version

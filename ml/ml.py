@@ -27,7 +27,7 @@ class ml(ABC):
     """
     
     @inject
-    def __init__(self, session, project_id, config : Configuration = Provide[Container.configuration]):
+    def __init__(self, project_id, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
         self.model = None
         self.name = None
         self.mse = None

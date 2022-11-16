@@ -12,6 +12,8 @@ from utils.math import Math
 from utils.timeit import timeit
 from utils.proglang import guess_programing_language
 from models.metric import Metric
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
 
 
 class FileAnalyzer:
@@ -25,7 +27,8 @@ class FileAnalyzer:
      - project_id   Identifier of the project
     """
 
-    def __init__(self, directory, session, version):
+    @inject
+    def __init__(self, directory, version, session = Provide[Container.session]):
         self.directory = directory
         self.session = session
         self.version = version

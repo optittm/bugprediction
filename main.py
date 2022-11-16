@@ -84,13 +84,12 @@ def instanciate_git_connector(tmp_dir, repo_dir) -> GitConnector:
 
     try:
         git: GitConnector = GitConnectorFactory.create_git_connector(
-            session,
             project.project_id,
             repo_dir
         )
     except Exception as e:
         raise ConfigurationValidationException(
-            f"Error connecting to project {configuration.source_repo} using source code mananager: {str(e)}.")
+            f"Error connecting to project {configuration.source_repo} using source code manager: {str(e)}.")
 
     check_branch_exists(repo_dir, configuration.current_branch)
 
@@ -260,7 +259,7 @@ def populate(ctx, skip_versions):
             
             # FIXME : this execution is dependent from previous version
             # So if some versions are ignored in config, the result is wrong 
-            legacy = LegacyConnector(session, project.project_id, repo_dir, version)
+            legacy = LegacyConnector(project.project_id, repo_dir, version)
             legacy.get_legacy_files(version)
 
             # Get statistics from git log with codemaat
@@ -268,11 +267,11 @@ def populate(ctx, skip_versions):
             # codemaat.analyze_git_log()
 
             # Get metrics with CK
-            ck = CkConnector(directory=tmp_work_dir, session=session, version=version)
+            ck = CkConnector(directory=tmp_work_dir, version=version)
             ck.analyze_source_code()
 
             # Get statistics with lizard
-            lizard = FileAnalyzer(directory=tmp_work_dir, session=session, version=version)
+            lizard = FileAnalyzer(directory=tmp_work_dir, version=version)
             lizard.analyze_source_code()
 
             # Get metrics with JPeek
@@ -296,10 +295,13 @@ if __name__ == '__main__':
         "connectors.legacy",
         "connectors.codemaat",
         "connectors.git",
+        "connectors.gitfactory",
+        "connectors.github",
         "connectors.jpeek",
+        "connectors.fileanalyzer",
         "ml.ml",
         "metrics.commits",
-        "importers.flatfile",
+        "importers.flatfile"
         ])
 
         logging.basicConfig(level=configuration.log_level)
@@ -313,18 +315,14 @@ if __name__ == '__main__':
         except ArgumentError as e:
             raise ConfigurationValidationException(f"Error from sqlalchemy : {str(e)}")
 
-        Session = sessionmaker()
-        Session.configure(bind=engine)
-        session = Session()
+        engine = Container.engine
+        session = Container.session()
+        project = Container.project
+        
         setup_database(engine)
 
-        project = session.query(Project).filter(Project.name == configuration.source_project).first()
-        if not project:
-            project = Project(name=configuration.source_project,
-                            repo=configuration.source_repo,
-                            language=configuration.language)
-            session.add(project)
-            session.commit()
+        
+        
 
         # Setup command line options
         cli(obj={})

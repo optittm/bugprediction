@@ -19,7 +19,7 @@ from utils.container import Container
 class LegacyConnector:
 
     @inject
-    def __init__(self, session, project_id, directory, version, config : Configuration = Provide[Container.configuration]):
+    def __init__(self, project_id, directory, version, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
         self.session = session
         self.version = version
         self.project_id = project_id

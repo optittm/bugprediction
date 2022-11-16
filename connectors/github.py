@@ -15,14 +15,17 @@ import datetime
 from sqlalchemy.sql import func
 from connectors.git import GitConnector
 from utils.timeit import timeit
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
 
 class GitHubConnector(GitConnector):
     """
     Connector to Github
     """
 
-    def __init__(self, token, repo, current, session, project_id, directory):
-        GitConnector.__init__(self, token, repo, current, session, project_id, directory)
+    @inject
+    def __init__(self, token, repo, current, project_id, directory, session = Provide[Container.session]):
+        GitConnector.__init__(self, token, repo, current, project_id, directory)
         self.api = Github(self.token)
         self.remote = self.api.get_repo(self.repo)
 

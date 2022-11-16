@@ -7,14 +7,17 @@ from configuration import Configuration
 from connectors.git import GitConnector
 from connectors.github import GitHubConnector
 from connectors.gitlab import GitLabConnector
+from dependency_injector.wiring import Provide, inject
+from utils.container import Container
 
 class GitConnectorFactory:
 
+    @inject
     @staticmethod
-    def create_git_connector(session: sessionmaker, 
-                             project_id: str, repo_dir: str) -> GitConnector:
+    def create_git_connector( 
+                             project_id: str, repo_dir: str, session: sessionmaker = Provide[Container.Session], config = Provide[Container.configuration]) -> GitConnector:
         
-        configuration = Configuration()
+        configuration = config
         scm = configuration.source_repo_scm
 
         if scm == "github":
@@ -23,7 +26,6 @@ class GitConnectorFactory:
                 configuration.scm_token,
                 configuration.source_repo,
                 configuration.current_branch,
-                session,
                 project_id,
                 repo_dir
             )

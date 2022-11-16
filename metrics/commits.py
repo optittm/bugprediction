@@ -12,7 +12,7 @@ from utils.container import Container
 
 @inject
 @timeit
-def compute_commit_msg_quality(session, version:Version, config : Configuration = Provide[Container.configuration]):
+def compute_commit_msg_quality(version:Version, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
     """
     Compute the message quality for a given version
 

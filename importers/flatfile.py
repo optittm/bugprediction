@@ -19,7 +19,7 @@ class FlatFileImporter:
     Import CSV file data to the database
     """
     @inject
-    def __init__(self, session, file_path:str, target_table:str, overwrite:bool, config : Configuration = Provide[Container.configuration]) -> None:
+    def __init__(self, file_path:str, target_table:str, overwrite:bool, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]) -> None:
         """
         Constructor
 

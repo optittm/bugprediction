@@ -33,7 +33,7 @@ class GitConnector(ABC):
     """
     
     @inject
-    def __init__(self, token, repo, current, session, project_id, directory, config : Configuration = Provide[Container.configuration]):
+    def __init__(self, token, repo, current, project_id, directory, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
         self.token = token
         self.repo = repo
         self.current = current
@@ -142,7 +142,8 @@ class GitConnector(ABC):
         self.compute_version_metrics()
 
     def _clean_project_existing_versions(self):
-        self.session.query(Version).filter(Version.project_id == self.project_id).delete()
+        if self.session.query(Version).filter(Version.project_id == self.project_id):
+            self.session.query(Version).filter(Version.project_id == self.project_id).delete()
         self.session.commit()
 
     def _get_first_commit_date(self):

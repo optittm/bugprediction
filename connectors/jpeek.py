@@ -22,7 +22,7 @@ class JPeekConnector:
         - version     Sqlalchemy object representing a Version
     """
     @inject
-    def __init__(self, directory, session, version, config : Configuration = Provide[Container.configuration]) -> None:
+    def __init__(self, directory,  version, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]) -> None:
         self.directory = directory
         self.session = session
         self.version = version
