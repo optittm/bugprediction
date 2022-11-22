@@ -2,6 +2,8 @@ import logging
 import math
 from datetime import datetime, timedelta
 
+from git import BadName
+
 import pandas as pd
 from sqlalchemy import desc
 from sqlalchemy.sql import func
@@ -9,6 +11,7 @@ from sklearn import preprocessing
 import pandas as pd
 import numpy as np
 from pydriller.metrics.process.code_churn import CodeChurn
+from exceptions.configurationvalidation import ConfigurationValidationException
 
 from models.version import Version
 from models.metric import Metric
@@ -81,29 +84,32 @@ def compute_version_metrics(session, repo_dir:str, project_id:int):
 
         # Compute the count, average, and max code churn on the version
         logging.info("Counting churn between " + from_commit + " and " + version.tag)
-        metric = CodeChurn(path_to_repo=repo_dir,
-                        from_commit=from_commit,
-                        to_commit=version.tag)
-        files_count = metric.count()
-        files_avg = metric.avg()
-        files_max = metric.max()
-        churn_count = 0
-        for file_count in files_count.values():
-            churn_count += abs(file_count)
-        churn_avg = abs(mt.Math.get_rounded_mean(list(files_avg.values())))
-        churn_max = max(list(files_max.values()))
-        logging.info('Chrun count: ' + str(churn_count) + ' / Chrun avg: ' + str(churn_avg) + ' / Chrun max: ' + str(churn_max))
-        from_commit = version.tag
+        try:
+            metric = CodeChurn(path_to_repo=repo_dir,
+                            from_commit=from_commit,
+                            to_commit=version.tag)
+            files_count = metric.count()
+            files_avg = metric.avg()
+            files_max = metric.max()
+            churn_count = 0
+            for file_count in files_count.values():
+                churn_count += abs(file_count)
+            churn_avg = abs(mt.Math.get_rounded_mean(list(files_avg.values())))
+            churn_max = max(list(files_max.values()))
+            logging.info('Chrun count: ' + str(churn_count) + ' / Chrun avg: ' + str(churn_avg) + ' / Chrun max: ' + str(churn_max))
+            from_commit = version.tag
 
-        # Modify the version into the database
-        version.code_churn_count = churn_count
-        version.code_churn_avg = churn_avg
-        version.code_churn_max = churn_max
-        version.bugs=bugs_count
-        version.changes=rough_changes
-        version.avg_team_xp=seniority_avg
-        version.bug_velocity=bug_velo_release
-        session.commit()
+            # Modify the version into the database
+            version.code_churn_count = churn_count
+            version.code_churn_avg = churn_avg
+            version.code_churn_max = churn_max
+            version.bugs=bugs_count
+            version.changes=rough_changes
+            version.avg_team_xp=seniority_avg
+            version.bug_velocity=bug_velo_release
+            session.commit()
+        except BadName:
+            raise ConfigurationValidationException(f"Branch {version.tag} doesn't exists in this repository")
 
 @timeit
 def assess_next_release_risk(session, project_id:int):
