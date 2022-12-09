@@ -172,10 +172,7 @@ class CodeMaatConnector:
         # Insert the patterns of ownership into the database
         for index, row in df.iterrows():
             # Create the author if it doesn't exist
-            author = self.session.query(Author, Ownership) \
-                    .join(Ownership, Author.author_id == Ownership.author_id) \
-                    .filter(Author.name == row['author']) \
-                    .filter(Ownership.version_id == Version.version_id).first()
+            author = self.session.query(Author).filter(Author.name == row['author']).first()
             if not author:
                 author = Author(name=row['author'])
                 self.session.add(author)

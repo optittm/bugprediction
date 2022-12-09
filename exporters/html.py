@@ -71,7 +71,7 @@ class HtmlExporter:
         template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "templates/")
 
         releases = self.session.query(Version, Metric) \
-                (Metric, Version.version_id == Metric.version_id) \
+                .join(Metric, Version.version_id == Metric.version_id) \
                 .order_by(Version.end_date.desc()) \
                 .filter(Version.project_id == project.project_id) \
                 .filter(Version.name != "Next Release").all()
