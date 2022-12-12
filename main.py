@@ -72,6 +72,7 @@ def instanciate_git_connector(tmp_dir, repo_dir) -> GitConnector:
     process = subprocess.run([configuration.scm_path, "clone", configuration.source_repo_url],
                              stdout=subprocess.PIPE,
                              cwd=tmp_dir)
+
     try:
         process.check_returncode()
     except subprocess.CalledProcessError:
@@ -81,6 +82,11 @@ def instanciate_git_connector(tmp_dir, repo_dir) -> GitConnector:
     if not os.path.isdir(repo_dir):
         raise ConfigurationValidationException(
             f"Project {configuration.source_project} doesn't exist in current repository")
+
+    check_branch_exists(repo_dir, configuration.current_branch)
+    process = subprocess.run([configuration.scm_path, "checkout", configuration.current_branch],
+                             stdout=subprocess.PIPE,
+                             cwd=repo_dir)
 
     try:
         git: GitConnector = GitConnectorFactory.create_git_connector(
