@@ -1,10 +1,12 @@
 import logging
 import math
+import subprocess
 from datetime import datetime, timedelta
 
 from git import BadName
 
 import pandas as pd
+from configuration import Configuration
 from sqlalchemy import desc
 from sqlalchemy.sql import func
 from sklearn import preprocessing
@@ -40,6 +42,8 @@ def compute_version_metrics(session, repo_dir:str, project_id:int):
         Project Identifier
     """
     logging.info("compute_version_metrics")
+
+    configuration = Configuration()
 
     versions = session.query(Version) \
         .filter(Version.project_id == project_id) \
@@ -109,7 +113,10 @@ def compute_version_metrics(session, repo_dir:str, project_id:int):
             version.bug_velocity=bug_velo_release
             session.commit()
         except BadName:
-            raise ConfigurationValidationException(f"Branch {version.tag} doesn't exists in this repository")
+            process = subprocess.run([configuration.scm_path, "checkout", configuration.current_branch],
+                                 stdout=subprocess.PIPE,
+                                 cwd=repo_dir)
+            logging.info('Executed command line: ' + ' '.join(process.args))
 
 @timeit
 def assess_next_release_risk(session, project_id:int):
