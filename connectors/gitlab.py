@@ -37,7 +37,7 @@ class GitLabConnector(GitConnector):
 
         self.remote = self.api.projects.get(self.repo)
 
-    def _get_issues(self, since, labels):
+    def _get_issues(self, since=None, labels=None):
         if not since:
             since = None
         if not labels:
@@ -71,7 +71,9 @@ class GitLabConnector(GitConnector):
         logging.info('GitLabConnector: create_issues')
 
         # Check if a database already exist
-        last_issue = self.session.query(Issue).order_by(desc(Issue.updated_at)).get(1)
+        last_issue = self.session.query(Issue) \
+                         .filter(Issue.project_id == self.project_id) \
+                         .order_by(desc(Issue.updated_at)).get(1)
         if last_issue is not None:
             # Update existing database by fetching new issues
             if not self.configuration.issue_tags:
@@ -139,7 +141,7 @@ class GitLabConnector(GitConnector):
         versions.append(
             Version(
                 project_id=self.project_id,
-                name="Next Release",
+                name=self.configuration.next_version_name,
                 tag=self.current,
                 start_date=previous_release_published_at,
                 end_date=datetime.now(),
