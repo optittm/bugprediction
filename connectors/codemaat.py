@@ -2,21 +2,13 @@ import logging
 import subprocess
 import os
 import tempfile
-from datetime import datetime
 
 from sqlalchemy.sql import func
 import pandas as pd
 
-from models.issue import Issue
-from models.version import Version
-from models.commit import Commit
-from models.file import File
 from models.author import Author
 from models.ownership import Ownership
 from utils.database import save_file_if_not_found
-from configuration import Configuration
-from dependency_injector.wiring import Provide, inject
-from utils.container import Container
 
 class CodeMaatConnector:
     """
@@ -30,8 +22,7 @@ class CodeMaatConnector:
         - version     Sqlalchemy object representing a Version
     """
 
-    @inject
-    def __init__(self, directory, version, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
+    def __init__(self, directory, version, session, config):
         self.directory = directory
         self.session = session
         self.version = version

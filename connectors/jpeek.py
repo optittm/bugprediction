@@ -4,11 +4,8 @@ import pandas as pd
 import os
 import tempfile
 
-from configuration import Configuration
 from models.metric import Metric
 from utils.timeit import timeit
-from dependency_injector.wiring import Provide, inject
-from utils.container import Container
 
 class JPeekConnector:
     """
@@ -21,8 +18,8 @@ class JPeekConnector:
         - session     Connection to a database managed by sqlalchemy
         - version     Sqlalchemy object representing a Version
     """
-    @inject
-    def __init__(self, directory,  version, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]) -> None:
+
+    def __init__(self, directory,  version, session, config) -> None:
         self.directory = directory
         self.session = session
         self.version = version

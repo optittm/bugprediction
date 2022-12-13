@@ -4,20 +4,14 @@ import datetime
 import json
 
 from pydriller import Repository
-from sqlalchemy.sql import func
-from sqlalchemy import desc
 
-from configuration import Configuration
 from models.version import Version
 from models.commit import Commit
-from models.issue import Issue
 from models.metric import Metric
 from models.author import Author
 from models.alias import Alias
 from utils.timeit import timeit
 from metrics.versions import compute_version_metrics
-from dependency_injector.wiring import Provide, inject
-from utils.container import Container
 
 class GitConnector(ABC):
     """Connector to Github
@@ -32,8 +26,7 @@ class GitConnector(ABC):
      - directory    Folder (temporary) where the project is cloned
     """
     
-    @inject
-    def __init__(self, token, repo, current, project_id, directory, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
+    def __init__(self, project_id, directory, token, repo, current, session, config):
         self.token = token
         self.repo = repo
         self.current = current
@@ -120,7 +113,7 @@ class GitConnector(ABC):
         """
         Clean the metrics assosciated to the current branch so as to compute them again
         """
-        next_release = self.session.query(Version).filter(Commit.project_id == self.project_id) \
+        next_release = self.session.query(Version).filter(Version.project_id == self.project_id) \
                                                   .filter(Version.name == self.configuration.next_version_name).first()
         if next_release is None:
             logging.info("No Metrics to clean up")

@@ -9,17 +9,13 @@ import click
 from metrics.versions import compute_version_metrics
 from models.version import Version
 from models.issue import Issue
-from configuration import Configuration
-from dependency_injector.wiring import Provide, inject
-from utils.container import Container
 
 
 class FlatFileImporter:
     """
     Import CSV file data to the database
     """
-    @inject
-    def __init__(self, file_path:str, target_table:str, overwrite:bool, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]) -> None:
+    def __init__(self, file_path:str, target_table:str, overwrite:bool, session, config) -> None:
         """
         Constructor
 

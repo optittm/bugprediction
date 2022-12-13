@@ -2,15 +2,11 @@ import logging
 import pickle
 from abc import abstractmethod, ABC
 from datetime import datetime
-from unicodedata import name
 
 from sqlalchemy import and_
 
 from utils.timeit import timeit
 from models.model import Model
-from configuration import Configuration
-from dependency_injector.wiring import Provide, inject
-from utils.container import Container
 
 
 class ml(ABC):
@@ -26,8 +22,7 @@ class ml(ABC):
      - mse              Mean Square Error of the current model
     """
     
-    @inject
-    def __init__(self, project_id, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
+    def __init__(self, project_id, session, config):
         self.model = None
         self.name = None
         self.mse = None

@@ -1,31 +1,24 @@
 import logging
 from time import sleep, time
 import github
-from numpy import sinc
 
 from sqlalchemy import desc
-from unicodedata import name
 
 import models
 from models.issue import Issue
 from models.version import Version
-from models.commit import Commit
 from github import Github
 import datetime
-from sqlalchemy.sql import func
 from connectors.git import GitConnector
 from utils.timeit import timeit
-from dependency_injector.wiring import Provide, inject
-from utils.container import Container
 
 class GitHubConnector(GitConnector):
     """
     Connector to Github
     """
 
-    @inject
-    def __init__(self, token, repo, current, project_id, directory, session = Provide[Container.session]):
-        GitConnector.__init__(self, token, repo, current, project_id, directory)
+    def __init__(self, project_id, directory, token, repo, current, session, config):
+        GitConnector.__init__(self, project_id, directory, token, repo, current, session, config)
         self.api = Github(self.token)
         self.remote = self.api.get_repo(self.repo)
 
@@ -65,7 +58,7 @@ class GitHubConnector(GitConnector):
         # Check if a database already exist
         last_issue = self.session.query(Issue) \
                          .filter(Issue.project_id == self.project_id) \
-                         .order_by(desc(models.issue.Issue.updated_at)).get(1)
+                         .order_by(desc(models.issue.Issue.updated_at)).first()
         if last_issue is not None:
             # Update existing database by fetching new issues
             if not self.configuration.issue_tags:

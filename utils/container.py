@@ -2,47 +2,86 @@ from dependency_injector import containers, providers
 from configuration import Configuration
 from dotenv import load_dotenv
 from sqlalchemy.orm import sessionmaker
-from models.database import setup_database
-import sqlalchemy as db
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.exc import ArgumentError
-from models.project import Project
-from dependency_injector.wiring import Provide, inject
-from exceptions.configurationvalidation import ConfigurationValidationException
+from exporters.ml_reports import MlHtmlExporter
 
+from ml.ml import ml
+from connectors.ck import CkConnector
+from connectors.jpeek import JPeekConnector
+from connectors.legacy import LegacyConnector
+from connectors.codemaat import CodeMaatConnector
+from connectors.fileanalyzer import FileAnalyzer
+from connectors.git import GitConnector
+from importers.flatfile import FlatFileImporter
+from exporters.html import HtmlExporter
+from exporters.flatfile import FlatFileExporter
 
 class Container(containers.DeclarativeContainer):
-    # config
     load_dotenv()
-    #config = providers.Configuration()
 
-    configuration: Configuration = providers.Factory(Configuration)
-    config = Configuration()
-    try:
-        engine = db.create_engine(config.target_database)
-    except ArgumentError as e:
-        raise ConfigurationValidationException(f"Error from sqlalchemy : {str(e)}")
+    configuration: Configuration = providers.Singleton(Configuration)
 
     Session = sessionmaker()
-    Session.configure(bind=engine)
+    session = providers.Singleton(Session)
+
+    legacy_connector_provider = providers.Factory(
+        LegacyConnector,
+        session = session,
+        config = configuration
+    )
+
+    ck_connector_provider = providers.Factory(
+        CkConnector,
+        session = session,
+        config = configuration
+    )
+
+    codemaat_connector_provider = providers.Factory(
+        CodeMaatConnector,
+        session = session,
+        config = configuration
+    )
     
-    session = providers.Factory(Session)
+    jpeek_connector_provider = providers.Factory(
+        JPeekConnector,
+        session = session,
+        config = configuration
+    )
 
-    #setup_database(engine)
+    file_analyzer_provider = providers.Factory(
+        FileAnalyzer,
+        session = session
+    )
 
-    sess = Session()
+    flat_file_importer_provider = providers.Singleton(
+        FlatFileImporter,
+        session = session,
+        config = configuration
+    )
 
-    setup_database(engine)
+    git_factory_provider = providers.AbstractFactory(
+        GitConnector
+    )
 
-    project = sess.query(Project).filter(Project.name == config.source_project).first()
-    if not project:
-        project = Project(name=config.source_project,
-                        repo=config.source_repo,
-                        language=config.language)
-        sess.add(project)
-        sess.commit()
+    ml_factory_provider = providers.AbstractFactory(
+        ml
+    )
 
+    html_exporter_provider = providers.Singleton(
+        HtmlExporter,
+        session = session,
+        configuration = configuration,
+        model = ml_factory_provider
+    )
+
+    ml_html_exporter_provider = providers.Singleton(
+        MlHtmlExporter,
+        session = session,
+        config = configuration
+    )
+
+    flat_file_exporter_provider = providers.Singleton(
+        FlatFileExporter,
+        session = session,
+        config = configuration
+    )
     
-
-    # database
-

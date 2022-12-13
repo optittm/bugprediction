@@ -1,18 +1,11 @@
-import logging
-
 import pandas as pd
-from sqlalchemy import desc
 
-from configuration import Configuration
 from models.version import Version
 from models.commit import Commit
 from utils.timeit import timeit
-from dependency_injector.wiring import Provide, inject
-from utils.container import Container
 
-@inject
 @timeit
-def compute_commit_msg_quality(version:Version, session = Provide[Container.session], config : Configuration = Provide[Container.configuration]):
+def compute_commit_msg_quality(version:Version, session, config):
     """
     Compute the message quality for a given version
 

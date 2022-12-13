@@ -83,8 +83,7 @@ def compute_version_metrics(session, repo_dir:str, project_id:int):
         seniority_avg = seniority_total / max(len(team_members), 1)
 
         # Compute the count, average, and max code churn on the version
-        tmp = session.query(Metric).filter(Metric.version_id == version.version_id).first()
-        if tmp :
+        if version.code_churn_count:
             logging.info("Chrun already done for this version")
         else :
             logging.info("Counting churn between " + from_commit + " and " + version.tag)
