@@ -248,12 +248,12 @@ def check(ctx):
 
 @cli.command(name="jira")
 @click.pass_context
-def jira_projects(ctx):
+def jira_issues(ctx):
     jira = instanciate_jira_connector()
 
-    jiraProjects = jira._get_projects()
+    issues = jira._get_issues()
 
-    logging.info(jiraProjects)
+    logging.info(issues)
 
 @cli.command()
 @click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")
