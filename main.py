@@ -70,7 +70,7 @@ def instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo
         raise ConfigurationValidationException(
             f"Project {configuration.source_project} doesn't exist in current repository")
 
-    check_branch_exists(repo_dir, configuration.current_branch)
+    check_branch_exists(configuration, repo_dir, configuration.current_branch)
     process = subprocess.run([configuration.scm_path, "checkout", configuration.current_branch],
                              stdout=subprocess.PIPE,
                              cwd=repo_dir)
@@ -84,8 +84,6 @@ def instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo
     except Exception as e:
         raise ConfigurationValidationException(
             f"Error connecting to project {configuration.source_repo} using source code manager: {str(e)}.")
-
-    check_branch_exists(configuration, repo_dir, configuration.current_branch)
 
     if not lint_aliases(configuration.author_alias):
         raise ConfigurationValidationException(f"Value error for aliases: {configuration.author_alias}")

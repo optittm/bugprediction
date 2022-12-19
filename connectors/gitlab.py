@@ -44,7 +44,7 @@ class GitLabConnector(GitConnector):
             labels = None
 
         try:
-            return self.remote.issues.list(state="all", since=since, with_labels_details=labels)
+            return self.remote.issues.list(state="all", since=since, with_labels_details=labels, get_all=True)
         except gitlab.GitlabJobRetryError:
             sleep(self.configuration.retry_delay)
             self._get_issues(since, labels)
