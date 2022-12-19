@@ -14,6 +14,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import ArgumentError
 from dependency_injector.wiring import Provide, inject
 from dotenv import load_dotenv
+from connectors.jira import JiraConnector
 
 from container import Container
 from configuration import Configuration
@@ -99,6 +100,12 @@ def instanciate_git_connector(tmp_dir, repo_dir) -> GitConnector:
         raise ConfigurationValidationException(f"Value error for aliases: {configuration.author_alias}")
 
     return git
+
+def instanciate_jira_connector():
+    jira = JiraConnector(configuration.jira_base_url, configuration.jira_email, configuration.jira_token)
+
+    return jira
+
 
 @click.group()
 @click.pass_context
@@ -238,6 +245,15 @@ def check(ctx):
     instanciate_git_connector(tmp_dir, repo_dir)
 
     logging.info("Check OK")
+
+@cli.command(name="jira")
+@click.pass_context
+def jira_projects(ctx):
+    jira = instanciate_jira_connector()
+
+    jiraProjects = jira._get_projects()
+
+    logging.info(jiraProjects)
 
 @cli.command()
 @click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")
