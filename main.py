@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 import logging
@@ -247,11 +248,13 @@ def check(ctx):
     logging.info("Check OK")
 
 @cli.command(name="jira")
+@click.option('--labels', default=[], help="Jira issues labels")
 @click.pass_context
-def jira_issues(ctx):
+def jira_issues(ctx, labels):
     jira = instanciate_jira_connector()
 
-    issues = jira._get_issues()
+    result = re.sub(r'[\[\]]', '', labels)
+    issues = jira._get_issues(result.split(","))
 
     logging.info(issues)
 
