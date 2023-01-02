@@ -102,8 +102,15 @@ def instanciate_git_connector(tmp_dir, repo_dir) -> GitConnector:
 
     return git
 
-def instanciate_jira_connector():
-    jira = JiraConnector(configuration.jira_base_url, configuration.jira_email, configuration.jira_token)
+def instanciate_jira_connector() -> JiraConnector:
+    """
+        Instanciates a jira connector
+    """
+    try:
+        jira = JiraConnector(configuration, session, project.project_id)
+    except Exception as e:
+        raise ConfigurationValidationException(
+            f"Error connecting to project {configuration.source_repo} using source code mananager: {str(e)}.")
 
     return jira
 
@@ -248,15 +255,12 @@ def check(ctx):
     logging.info("Check OK")
 
 @cli.command(name="jira")
-@click.option('--labels', default=[], help="Jira issues labels")
+@click.option('--labels', default="", help="Jira issues labels")
 @click.pass_context
 def jira_issues(ctx, labels):
     jira = instanciate_jira_connector()
 
-    result = re.sub(r'[\[\]]', '', labels)
-    issues = jira._get_issues(result.split(","))
-
-    logging.info(issues)
+    jira.populate_db(labels)
 
 @cli.command()
 @click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")
