@@ -254,18 +254,11 @@ def check(ctx):
 
     logging.info("Check OK")
 
-@cli.command(name="jira")
-@click.option('--labels', default="", help="Jira issues labels")
-@click.pass_context
-def jira_issues(ctx, labels):
-    jira = instanciate_jira_connector()
-
-    jira.populate_db(labels)
-
 @cli.command()
 @click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")
+@click.option('--labels', default="", help="Jira issue labels" )
 @click.pass_context
-def populate(ctx, skip_versions):
+def populate(ctx, skip_versions, labels):
     """Populate the database with the provided configuration"""
 
     # Checkout, execute the tool and inject CSV result into the database
@@ -274,19 +267,25 @@ def populate(ctx, skip_versions):
     logging.info('created temporary directory: ' + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
-    git = instanciate_git_connector(tmp_dir, repo_dir)
-
-    git.populate_db(skip_versions)
-    # if we use code maat git.setup_aliases(configuration.author_alias)
-
-    
+    if len(configuration.source_bugs) == 0:
+        logging.error("No synchro because parameter 'OTTM_SOURCE_BUGS' no defined")
+    else:
+        for source_bugs in configuration.source_bugs:
+            if source_bugs == 'jira':
+                # Populate issue table in database with Jira issues
+                jira = instanciate_jira_connector()
+                jira.populate_db(labels)
+            elif source_bugs == 'git':
+                git = instanciate_git_connector(tmp_dir, repo_dir)
+                git.populate_db(skip_versions)
+                # if we use code maat git.setup_aliases(configuration.author_alias)
 
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     for version in versions:
         process = subprocess.run([configuration.scm_path, "checkout", version.tag],
-                                 stdout=subprocess.PIPE,
-                                 cwd=repo_dir)
+                                stdout=subprocess.PIPE,
+                                cwd=repo_dir)
         logging.info('Executed command line: ' + ' '.join(process.args))
 
         with TmpDirCopyFilteredWithEnv(repo_dir) as tmp_work_dir:
@@ -316,6 +315,8 @@ def populate(ctx, skip_versions):
             # Get metrics with JPeek
             # jp = JPeekConnector(directory=tmp_work_dir, session=session, version=version)
             # jp.analyze_source_code()
+
+    
 
 @click.command()
 @inject

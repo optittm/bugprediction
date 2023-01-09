@@ -1,5 +1,7 @@
-from jira import JIRA
+import logging
 import requests
+from jira import JIRA
+
 
 from models.issue import Issue
 from datetime import datetime
@@ -20,6 +22,8 @@ class JiraConnector():
 
     def populate_db(self, labels):
         """Populate the database from the Jira API"""
+        logging.info('Using Jira')
+
         issues = []
 
         for issue in self.__client.search_issues(f"project={self.config.jira_project}"):

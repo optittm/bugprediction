@@ -18,7 +18,7 @@ class GitConnectorFactory:
         scm = configuration.source_repo_scm
 
         if scm == "github":
-            logging.info('Using GiHub')
+            logging.info('Using GitHub')
             return GitHubConnector(
                 configuration.scm_token,
                 configuration.source_repo,
@@ -29,6 +29,7 @@ class GitConnectorFactory:
             )
         
         elif scm == "gitlab":
+            logging.info('Using GitLab')
             return GitLabConnector(
                 configuration.scm_base_url,
                 configuration.scm_token,
