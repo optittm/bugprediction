@@ -92,19 +92,6 @@ def instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo
 
     return git
 
-def instanciate_jira_connector() -> JiraConnector:
-    """
-        Instanciates a jira connector
-    """
-    try:
-        jira = JiraConnector(configuration, session, project.project_id)
-    except Exception as e:
-        raise ConfigurationValidationException(
-            f"Error connecting to project {configuration.source_repo} using source code mananager: {str(e)}.")
-
-    return jira
-
-
 @click.group()
 @click.pass_context
 @inject
@@ -270,6 +257,7 @@ def populate(ctx, skip_versions,
              session = Provide[Container.session],
              configuration = Provide[Container.configuration],
              git_factory_provider = Provide[Container.git_factory_provider.provider],
+             jira_connector_provider = Provide[Container.jira_connector_provider.provider],
              ck_connector_provider = Provide[Container.ck_connector_provider.provider],
              file_analyzer_provider = Provide[Container.file_analyzer_provider.provider],
              jpeek_connector_provider = Provide[Container.jpeek_connector_provider.provider],
@@ -291,7 +279,7 @@ def populate(ctx, skip_versions,
         for source_bugs in configuration.source_bugs:
             if source_bugs.strip() == 'jira':
                 # Populate issue table in database with Jira issues
-                jira = instanciate_jira_connector()
+                jira = jira_connector_provider(project.project_id)
                 jira.create_issues(labels)
             elif source_bugs.strip() == 'git':
                 git.create_issues()

@@ -8,11 +8,9 @@ from datetime import datetime
 
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
-class JiraConnector():
-    """
-    Connector to Jira
-    """
-    def __init__(self, config, session, project_id) -> None:
+class JiraConnector:
+    
+    def __init__(self, project_id, session, config) -> None:
         self.config = config
         self.session = session
         self.project_id = project_id
@@ -22,7 +20,7 @@ class JiraConnector():
 
     def create_issues(self, labels):
         """Populate the database from the Jira API"""
-        logging.info('Using Jira')
+        logging.info('JiraConnector: create_issues')
 
         issues = []
 
