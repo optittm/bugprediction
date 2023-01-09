@@ -22,6 +22,7 @@ You need to create and ```data/.env``` file (by copying the ```.env-example```) 
  - ```OTTM_SOURCE_REPO``` : Repositiory name (e.g. dbeaver/dbeaver)
  - ```OTTM_CURRENT_BRANCH``` :  The branch containing the next release (e.g. devel)
  - ```OTTM_SOURCE_REPO_URL``` : # The full path to repo (e.g. https://github.com/dbeaver/dbeaver)
+ - ```OTTM_SOURCE_BUGS``` : Source where we get issues (e.g. git)
  - ```OTTM_SOURCE_REPO_SCM``` : Either "github" or "gitlab", other SCM are not yet supported
  - ```OTTM_SCM_BASE_URL``` : SMC base URL - leave empty for public repo
  - ```OTTM_SCM_TOKEN``` Token to access github or gitlab

@@ -271,11 +271,11 @@ def populate(ctx, skip_versions, labels):
         logging.error("No synchro because parameter 'OTTM_SOURCE_BUGS' no defined")
     else:
         for source_bugs in configuration.source_bugs:
-            if source_bugs == 'jira':
+            if source_bugs.strip() == 'jira':
                 # Populate issue table in database with Jira issues
                 jira = instanciate_jira_connector()
                 jira.populate_db(labels)
-            elif source_bugs == 'git':
+            elif source_bugs.strip() == 'git':
                 git = instanciate_git_connector(tmp_dir, repo_dir)
                 git.populate_db(skip_versions)
                 # if we use code maat git.setup_aliases(configuration.author_alias)
