@@ -20,7 +20,7 @@ class JiraConnector():
                                 server=self.config.jira_base_url,
                                 basic_auth=(self.config.jira_email, self.config.jira_token))
 
-    def populate_db(self, labels):
+    def create_issues(self, labels):
         """Populate the database from the Jira API"""
         logging.info('Using Jira')
 
