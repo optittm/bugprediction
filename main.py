@@ -24,6 +24,7 @@ from models.metric import Metric
 from models.model import Model
 from models.database import setup_database
 from connectors.git import GitConnector
+from connectors.glpi import GlpiConnector
 from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
 from utils.dirs import TmpDirCopyFilteredWithEnv
@@ -244,6 +245,14 @@ def check(ctx, configuration = Provide[Container.configuration],
     instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
 
     logging.info("Check OK")
+
+@click.command()
+@click.pass_context
+@inject
+def glpi(ctx):
+    glpi= GlpiConnector("http://localhost/front/central.php", "123456789", '123456789')
+
+    logging.info(glpi)
 
 @cli.command()
 @click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")
