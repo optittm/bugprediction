@@ -92,6 +92,12 @@ def instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo
 
     return git
 
+def configurations_check(configuration, git_factory_provider, tmp_dir, repo_dir) -> GitConnector:
+    if len(configuration.source_bugs) == 0:
+        raise ConfigurationValidationException("No synchro because parameter 'OTTM_SOURCE_BUGS' no defined")
+    
+    return instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
+
 @click.group()
 @click.pass_context
 @inject
@@ -243,7 +249,7 @@ def check(ctx, configuration = Provide[Container.configuration],
     logging.info('created temporary directory: ' + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
-    instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
+    configurations_check(configuration, git_factory_provider, tmp_dir, repo_dir)
 
     logging.info("Check OK")
 
@@ -271,19 +277,16 @@ def populate(ctx, skip_versions,
     logging.info('created temporary directory: ' + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
-    git = instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
+    git = configurations_check(configuration, git_factory_provider, tmp_dir, repo_dir)
 
-    if len(configuration.source_bugs) == 0:
-        logging.error("No synchro because parameter 'OTTM_SOURCE_BUGS' no defined")
-    else:
-        for source_bugs in configuration.source_bugs:
-            if source_bugs.strip() == 'jira':
-                # Populate issue table in database with Jira issues
-                jira = jira_connector_provider(project.project_id)
-                jira.create_issues(labels)
-            elif source_bugs.strip() == 'git':
-                git.create_issues()
-                # if we use code maat git.setup_aliases(configuration.author_alias)
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == 'jira':
+            # Populate issue table in database with Jira issues
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+            jira.create_issues(labels)
+        elif source_bugs.strip() == 'git':
+            git.create_issues()
+            # if we use code maat git.setup_aliases(configuration.author_alias)
     
     git.populate_db(skip_versions)
 
