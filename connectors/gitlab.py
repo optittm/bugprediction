@@ -94,7 +94,7 @@ class GitLabConnector(GitConnector):
         bugs = []
         # for version in versions:
         for issue in git_issues:
-            # Check if the issue is linked to a selected version (included or not excluded)
+            # Check if the issue is linked to a selected version (included or not +IN?.§ .?NBVCXd)
             # if version.end_date > issue.created_at > version.start_date:
             if issue.author['username'] not in self.configuration.exclude_issuers:
                 bugs.append(

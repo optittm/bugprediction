@@ -24,8 +24,8 @@ class JiraConnector:
 
         issues = []
 
-        for issue in self.__client.search_issues(f"project={self.config.jira_project}"):
-            logging.info(issue.fields.reporter)
+        for issue in self.__client.search_issues('project=%s AND labels IN (%s)' % (self.config.jira_project, labels) if len(labels) > 0
+                                                 else 'project=%s' % (self.config.jira_project)):
 
             if issue.fields.reporter not in self.config.exclude_issuers:
                 issueFiltered = Issue(
@@ -38,12 +38,7 @@ class JiraConnector:
                                                                     else issue.fields.worklog.worklogs[-1].updated, '%Y-%m-%dT%H:%M:%S.%f%z')
                                      )
 
-                if len(labels) == 0:
-                    issues.append(issueFiltered)
-                else:
-                    for label in labels.split(","):
-                        if label.strip() in issue.fields.labels and issueFiltered not in issues:
-                            issues.append(issueFiltered)
+                issues.append(issueFiltered)
 
         self.session.add_all(issues)
         self.session.commit()
