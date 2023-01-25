@@ -255,11 +255,9 @@ def check(ctx, configuration = Provide[Container.configuration],
 
 @cli.command()
 @click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")
-@click.option('--labels', default="", help="Jira issue labels" )
 @click.pass_context
 @inject
 def populate(ctx, skip_versions,
-             labels, 
              session = Provide[Container.session],
              configuration = Provide[Container.configuration],
              git_factory_provider = Provide[Container.git_factory_provider.provider],
@@ -283,7 +281,7 @@ def populate(ctx, skip_versions,
         if source_bugs.strip() == 'jira':
             # Populate issue table in database with Jira issues
             jira: JiraConnector = jira_connector_provider(project.project_id)
-            jira.create_issues(labels)
+            jira.create_issues()
         elif source_bugs.strip() == 'git':
             git.create_issues()
             # if we use code maat git.setup_aliases(configuration.author_alias)

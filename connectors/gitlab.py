@@ -37,17 +37,18 @@ class GitLabConnector(GitConnector):
 
         self.remote = self.api.projects.get(self.repo)
 
-    def _get_issues(self, since=None, labels=None):
+    def _get_issues(self, since=None, labels=None, source='git'):
         if not since:
             since = None
         if not labels:
             labels = None
 
-        try:
-            return self.remote.issues.list(state="all", since=since, with_labels_details=labels, get_all=True)
-        except gitlab.GitlabJobRetryError:
-            sleep(self.configuration.retry_delay)
-            self._get_issues(since, labels)
+        if(source == 'git'):
+            try:
+                return self.remote.issues.list(state="all", since=since, with_labels_details=labels, get_all=True)
+            except gitlab.GitlabJobRetryError:
+                sleep(self.configuration.retry_delay)
+                self._get_issues(since, labels)
     
     def _get_releases(self, all, order_by, sort):
         if not all:
@@ -72,7 +73,7 @@ class GitLabConnector(GitConnector):
 
         # Check if a database already exist
         last_issue = self.session.query(Issue) \
-                         .filter(Issue.project_id == self.project_id) \
+                         .filter(Issue.project_id == self.project_id and Issue.source == 'git') \
                          .order_by(desc(Issue.updated_at)).first()
         if last_issue is not None:
             # Update existing database by fetching new issues
@@ -102,6 +103,7 @@ class GitLabConnector(GitConnector):
                         project_id=self.project_id,
                         title=issue.title,
                         number=issue.iid,
+                        source="git",
                         created_at=datetime.strptime(issue.created_at, '%Y-%m-%dT%H:%M:%S.%f%z'),
                         updated_at=datetime.strptime(issue.updated_at, '%Y-%m-%dT%H:%M:%S.%f%z')
                     )

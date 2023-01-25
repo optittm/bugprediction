@@ -22,17 +22,18 @@ class GitHubConnector(GitConnector):
         self.api = Github(self.token)
         self.remote = self.api.get_repo(self.repo)
 
-    def _get_issues(self, since=None, labels=None):
+    def _get_issues(self, since=None, labels=None, source='git'):
         if not since:
             since = github.GithubObject.NotSet
         if not labels:
             labels = github.GithubObject.NotSet
 
-        try:
-            return self.remote.get_issues(state="all", since=since, labels=labels)
-        except github.GithubException.RateLimitExceededException:
-            sleep(self.configuration.retry_delay)
-            self._get_issues(since, labels)
+        if(source == 'git'):
+            try:
+                return self.remote.get_issues(state="all", since=since, labels=labels)
+            except github.GithubException.RateLimitExceededException:
+                sleep(self.configuration.retry_delay)
+                self._get_issues(since, labels)
     
     def _get_releases(self, all=None, order_by=None, sort=None):
         if not all:
@@ -57,7 +58,7 @@ class GitHubConnector(GitConnector):
 
         # Check if a database already exist
         last_issue = self.session.query(Issue) \
-                         .filter(Issue.project_id == self.project_id) \
+                         .filter(Issue.project_id == self.project_id and Issue.source == 'git') \
                          .order_by(desc(models.issue.Issue.updated_at)).first()
         if last_issue is not None:
             # Update existing database by fetching new issues
@@ -87,6 +88,7 @@ class GitHubConnector(GitConnector):
                         project_id=self.project_id,
                         title=issue.title,
                         number=issue.number,
+                        source="git",
                         created_at=issue.created_at,
                         updated_at=issue.updated_at
                     )
