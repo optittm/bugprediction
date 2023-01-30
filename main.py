@@ -92,11 +92,9 @@ def instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo
 
     return git
 
-def configurations_check(configuration, git_factory_provider, tmp_dir, repo_dir) -> GitConnector:
+def source_bugs_check(configuration) -> None:
     if len(configuration.source_bugs) == 0:
         raise ConfigurationValidationException("No synchro because parameter 'OTTM_SOURCE_BUGS' no defined")
-    
-    return instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
 
 @click.group()
 @click.pass_context
@@ -249,7 +247,8 @@ def check(ctx, configuration = Provide[Container.configuration],
     logging.info('created temporary directory: ' + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
-    configurations_check(configuration, git_factory_provider, tmp_dir, repo_dir)
+    source_bugs_check(configuration)
+    instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
 
     logging.info("Check OK")
 
@@ -275,7 +274,7 @@ def populate(ctx, skip_versions,
     logging.info('created temporary directory: ' + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
-    git = configurations_check(configuration, git_factory_provider, tmp_dir, repo_dir)
+    git = instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
 
     for source_bugs in configuration.source_bugs:
         if source_bugs.strip() == 'jira':

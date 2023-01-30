@@ -1,14 +1,14 @@
 import logging
-from time import sleep
 import requests
+from typing import List
+from datetime import timedelta, datetime
+
 from jira import JIRA
-
-
 from sqlalchemy import desc
 
 from models.issue import Issue
+from utils.date import date_iso_8601_to_datetime, datetime_to_date_hours_minuts
 from utils.timeit import timeit
-from datetime import datetime, timedelta
 
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
@@ -21,17 +21,6 @@ class JiraConnector:
         self.__client = JIRA(
                                 server=self.config.jira_base_url,
                                 basic_auth=(self.config.jira_email, self.config.jira_token))
-        
-    def _get_issues(self, since=None, labels=None, source='jira'):
-        if not since:
-            since = None
-        if not labels:
-            labels = None
-
-        if(source == 'jira'):
-            return self.__client.search_issues('project=%s AND labels IN (%s)' % (self.config.jira_project, ','.join(labels)) if labels and len(labels) > 0
-                                                else 'project=%s' % (self.config.jira_project))
-
 
     @timeit
     def create_issues(self):
@@ -40,43 +29,74 @@ class JiraConnector:
         """
         logging.info('JiraConnector: create_issues')
 
-        # Check if a database already exist
-        last_issue = self.session.query(Issue) \
-                         .filter(Issue.project_id == self.project_id and Issue.source == 'jira') \
-                         .order_by(desc(Issue.updated_at)).first()
-        
-        if last_issue is not None:
-            if not self.config.issue_tags:
-                jira_issues = self._get_issues(since=last_issue.updated_at + timedelta(seconds=1), labels=None)
-            else:
-                jira_issues = self._get_issues(since=last_issue.updated_at + timedelta(seconds=1),
-                                               labels=self.config.issue_tags)
-        else:
-            if not self.config.issue_tags:
-                jira_issues = self._get_issues()
-            else:
-                jira_issues = self._get_issues(labels=self.config.issue_tags)
+        last_issue_date = self.__get_last_sinced_date()
+        if last_issue_date is not None:
+            last_issue_date += timedelta(minutes=1)
 
+        jira_issues = self._get_issues(updated_after=last_issue_date, labels=self.config.issue_tags)
         
         logging.info('Syncing ' + str(len(jira_issues)) + ' issue(s) from Jira')
 
-        bugs = []
+        self.__save_issues(jira_issues)
+
+    def __get_last_sinced_date(self) -> datetime:
+
+        last_issue_date = None
+
+        last_issue = self.session.query(Issue) \
+                         .filter(Issue.project_id == self.project_id and Issue.source == 'jira') \
+                         .order_by(desc(Issue.updated_at)).first()
+
+        if last_issue:
+            last_issue_date = last_issue.updated_at
+        
+        logging.info("Last issue date from database is : %s", last_issue_date)
+
+        return last_issue_date
+
+    def _get_issues(self, updated_after: datetime = None, labels: List[str] = None):
+
+        jql_query = self.__get_builded_jql_query(updated_after, labels)
+
+        logging.info("Performing JQL query to get Jira issues : %s", jql_query)
+
+        return self.__client.search_issues(jql_query)
+    
+    def __get_builded_jql_query(self, updated_after: datetime, labels: List[str]) -> str:
+
+        jql_query = f'project={self.config.jira_project}'
+
+        if labels:
+            labels_as_string = ",".join(labels)
+            jql_query += f' AND labels IN ({labels_as_string})'
+
+        if updated_after:
+            updated_after_formated = datetime_to_date_hours_minuts(updated_after)
+            jql_query += f' AND updatedDate >= "{updated_after_formated}"'
+
+        return jql_query
+
+    def __save_issues(self, jira_issues) -> None:
+        ottm_issues = []
 
         for issue in jira_issues:
 
             if issue.fields.reporter not in self.config.exclude_issuers:
-                bugs.append(
-                    Issue(
-                        project_id=self.project_id,
-                        number=issue.key,
-                        title=issue.fields.summary,
-                        source="jira",
-                        created_at=datetime.strptime(issue.fields.created, '%Y-%m-%dT%H:%M:%S.%f%z'),
-                        updated_at=datetime.strptime(
-                            issue.fields.created if len(issue.fields.worklog.worklogs) == 0 
-                            else issue.fields.worklog.worklogs[-1].updated, '%Y-%m-%dT%H:%M:%S.%f%z')
-                    )
+                
+                ottm_issue = Issue(
+                    project_id=self.project_id,
+                    number=issue.key,
+                    title=issue.fields.summary,
+                    source="jira",
+                    created_at=date_iso_8601_to_datetime(issue.fields.created),
                 )
 
-        self.session.add_all(bugs)
+                if hasattr(issue.fields, "updated"):
+                    ottm_issue.updated_at = date_iso_8601_to_datetime(issue.fields.updated)
+
+                ottm_issues.append(
+                    ottm_issue
+                )
+
+        self.session.add_all(ottm_issues)
         self.session.commit()

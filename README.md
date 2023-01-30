@@ -29,7 +29,7 @@ You need to create and ```data/.env``` file (by copying the ```.env-example```) 
  - ```OTTM_TARGET_DATABASE``` : The default value will generate a SQLite database into the current folder
  - ```OTTM_JIRA_BASE_URL``` : The full path to jira project (e.g. https://jira.atlassian.com)
  - ```OTTM_JIRA_PROJECT``` :  Jira project name
- - ```OTTM_JIRA_EMAIL_ADDRESS``` : Jira user email address
+ - ```OTTM_JIRA_EMAIL``` : Jira user email address
  - ```OTTM_JIRA_TOKEN``` : Token to access jira
  
  The first step (it might take a while) is to populate the database with versions, issues and commits. The repository will be cloned into a temporary folder and we will checkout all versions in order to generate code metrics. You can run this command in many times as it will only amend the database with latest changes.

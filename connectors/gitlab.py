@@ -6,6 +6,7 @@ from sqlalchemy import desc
 
 from models.issue import Issue
 from models.version import Version
+from utils.date import date_iso_8601_to_datetime
 from utils.timeit import timeit
 from connectors.git import GitConnector
 from gitlab import Gitlab
@@ -37,18 +38,17 @@ class GitLabConnector(GitConnector):
 
         self.remote = self.api.projects.get(self.repo)
 
-    def _get_issues(self, since=None, labels=None, source='git'):
+    def _get_issues(self, since=None, labels=None):
         if not since:
             since = None
         if not labels:
             labels = None
 
-        if(source == 'git'):
-            try:
-                return self.remote.issues.list(state="all", since=since, with_labels_details=labels, get_all=True)
-            except gitlab.GitlabJobRetryError:
-                sleep(self.configuration.retry_delay)
-                self._get_issues(since, labels)
+        try:
+            return self.remote.issues.list(state="all", since=since, with_labels_details=labels, get_all=True)
+        except gitlab.GitlabJobRetryError:
+            sleep(self.configuration.retry_delay)
+            self._get_issues(since, labels)
     
     def _get_releases(self, all, order_by, sort):
         if not all:
@@ -73,7 +73,8 @@ class GitLabConnector(GitConnector):
 
         # Check if a database already exist
         last_issue = self.session.query(Issue) \
-                         .filter(Issue.project_id == self.project_id and Issue.source == 'git') \
+                         .filter(Issue.project_id == self.project_id) \
+                         .filter(Issue.source == 'git') \
                          .order_by(desc(Issue.updated_at)).first()
         if last_issue is not None:
             # Update existing database by fetching new issues
@@ -104,8 +105,8 @@ class GitLabConnector(GitConnector):
                         title=issue.title,
                         number=issue.iid,
                         source="git",
-                        created_at=datetime.strptime(issue.created_at, '%Y-%m-%dT%H:%M:%S.%f%z'),
-                        updated_at=datetime.strptime(issue.updated_at, '%Y-%m-%dT%H:%M:%S.%f%z')
+                        created_at=date_iso_8601_to_datetime(issue.created_at),
+                        updated_at=date_iso_8601_to_datetime(issue.updated_at)
                     )
                 )
 
@@ -127,7 +128,7 @@ class GitLabConnector(GitConnector):
         previous_release_published_at = self._get_first_commit_date()
 
         for release in releases:
-            release_published_at = datetime.strptime(release.released_at, '%Y-%m-%dT%H:%M:%S.%f%z')
+            release_published_at = date_iso_8601_to_datetime(release.released_at)
             versions.append(
                 Version(
                     project_id=self.project_id,
