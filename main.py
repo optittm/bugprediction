@@ -253,13 +253,14 @@ def check(ctx, configuration = Provide[Container.configuration],
 
     logging.info("Check OK")
 
-@click.command()
+@cli.command()
 @click.pass_context
 @inject
-def glpi(ctx):
-    glpi= GlpiConnector("http://localhost/front/central.php", "123456789", '123456789')
+def glpi(ctx,
+         glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]):
+    glpi: GlpiConnector = glpi_connector_provider(project.project_id)
 
-    logging.info(glpi)
+    glpi.create_issues()
 
 @cli.command()
 @click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")

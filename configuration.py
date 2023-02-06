@@ -40,6 +40,11 @@ class Configuration:
         self.jira_email      = os.getenv("OTTM_JIRA_EMAIL", "")
         self.jira_token      = os.getenv("OTTM_JIRA_TOKEN", "")
 
+        self.glpi_base_url   = os.getenv("OTTM_GLPI_BASE_URL", "")
+        self.glpi_app_token  = os.getenv("OTTM_GLPI_APP_TOKEN", "")
+        self.glpi_username   = os.getenv("OTTM_GLPI_USERNAME", "")
+        self.glpi_password   = os.getenv("OTTM_GLPI_PASSWORD", "")
+
         self.issue_tags = self.__get_str_list("OTTM_ISSUE_TAGS")
         self.exclude_issuers = self.__get_str_list("OTTM_EXCLUDE_ISSSUERS")
 
