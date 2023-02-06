@@ -2,10 +2,11 @@ import logging
 from time import sleep
 import gitlab
 
-from sqlalchemy import desc
+from sqlalchemy import desc, update
 
 from models.issue import Issue
 from models.version import Version
+from utils.date import date_iso_8601_to_datetime
 from utils.timeit import timeit
 from connectors.git import GitConnector
 from gitlab import Gitlab
@@ -73,6 +74,7 @@ class GitLabConnector(GitConnector):
         # Check if a database already exist
         last_issue = self.session.query(Issue) \
                          .filter(Issue.project_id == self.project_id) \
+                         .filter(Issue.source == 'git') \
                          .order_by(desc(Issue.updated_at)).first()
         if last_issue is not None:
             # Update existing database by fetching new issues
@@ -91,25 +93,35 @@ class GitLabConnector(GitConnector):
         # versions = self.session.query(Version).all
         logging.info('Syncing ' + str(len(git_issues)) + ' issue(s) from GitLab')
 
-        bugs = []
+        new_bugs = []
         # for version in versions:
         for issue in git_issues:
-            # Check if the issue is linked to a selected version (included or not excluded)
+            # Check if the issue is linked to a selected version (included or not +IN?.§ .?NBVCXd)
             # if version.end_date > issue.created_at > version.start_date:
             if issue.author['username'] not in self.configuration.exclude_issuers:
-                bugs.append(
-                    Issue(
-                        project_id=self.project_id,
-                        title=issue.title,
-                        number=issue.iid,
-                        created_at=datetime.strptime(issue.created_at, '%Y-%m-%dT%H:%M:%S.%f%z'),
-                        updated_at=datetime.strptime(issue.updated_at, '%Y-%m-%dT%H:%M:%S.%f%z')
-                    )
-                )
+                
+                updated_issue_date = date_iso_8601_to_datetime(issue.updated_at)
+                existing_issue_id = self._get_existing_issue_id(issue.iid)
 
-        # Remove potential duplicated values
-        # list(dict.fromkeys(bugs))
-        self.session.add_all(bugs)
+                if existing_issue_id:
+                    logging.info("Issue %s already exists, updating it", existing_issue_id)
+                    self.session.execute(
+                        update(Issue).where(Issue.issue_id == existing_issue_id) \
+                                     .values(title=issue.title, updated_at=updated_issue_date)
+                    )
+                else:
+                    new_bugs.append(
+                        Issue(
+                            project_id=self.project_id,
+                            title=issue.title,
+                            number=issue.iid,
+                            source="git",
+                            created_at=date_iso_8601_to_datetime(issue.created_at),
+                            updated_at=updated_issue_date,
+                        )
+                    )
+
+        self.session.add_all(new_bugs)
         self.session.commit()
     
     @timeit
@@ -125,7 +137,7 @@ class GitLabConnector(GitConnector):
         previous_release_published_at = self._get_first_commit_date()
 
         for release in releases:
-            release_published_at = datetime.strptime(release.released_at, '%Y-%m-%dT%H:%M:%S.%f%z')
+            release_published_at = date_iso_8601_to_datetime(release.released_at)
             versions.append(
                 Version(
                     project_id=self.project_id,
