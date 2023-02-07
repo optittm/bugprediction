@@ -254,15 +254,6 @@ def check(ctx, configuration = Provide[Container.configuration],
     logging.info("Check OK")
 
 @cli.command()
-@click.pass_context
-@inject
-def glpi(ctx,
-         glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]):
-    glpi: GlpiConnector = glpi_connector_provider(project.project_id)
-
-    glpi.create_issues()
-
-@cli.command()
 @click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")
 @click.pass_context
 @inject
@@ -271,6 +262,7 @@ def populate(ctx, skip_versions,
              configuration = Provide[Container.configuration],
              git_factory_provider = Provide[Container.git_factory_provider.provider],
              jira_connector_provider = Provide[Container.jira_connector_provider.provider],
+             glpi_connector_provider = Provide[Container.glpi_connector_provider.provider],
              ck_connector_provider = Provide[Container.ck_connector_provider.provider],
              file_analyzer_provider = Provide[Container.file_analyzer_provider.provider],
              jpeek_connector_provider = Provide[Container.jpeek_connector_provider.provider],
@@ -291,6 +283,10 @@ def populate(ctx, skip_versions,
             # Populate issue table in database with Jira issues
             jira: JiraConnector = jira_connector_provider(project.project_id)
             jira.create_issues()
+        elif source_bugs.strip() == 'glpi':
+            # Populate issue table in database with Glpi issues
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+            glpi.create_issues()
         elif source_bugs.strip() == 'git':
             git.create_issues()
             # if we use code maat git.setup_aliases(configuration.author_alias)

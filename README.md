@@ -31,6 +31,10 @@ You need to create and ```data/.env``` file (by copying the ```.env-example```) 
  - ```OTTM_JIRA_PROJECT``` :  Jira project name
  - ```OTTM_JIRA_EMAIL``` : Jira user email address
  - ```OTTM_JIRA_TOKEN``` : Token to access jira
+ - ```OTTM_GLPI_BASE_URL``` : The full path to glpi API (e.g. http://localhost/apirest.php/)
+ - ```OTTM_GLPI_APP_TOKEN``` : Glpi token to access Glpi API
+ - ```OTTM_GLPI_USERNAME``` : Glpi username
+ - ```OTTM_GLPI_PASSWORD``` : Glpi password
  
  The first step (it might take a while) is to populate the database with versions, issues and commits. The repository will be cloned into a temporary folder and we will checkout all versions in order to generate code metrics. You can run this command in many times as it will only amend the database with latest changes.
 
