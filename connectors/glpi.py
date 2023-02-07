@@ -37,24 +37,25 @@ class GlpiConnector:
         new_ottm_issues = []
 
         for issue in glpi_issues:
-            existing_issue_id = self.__get_existing_issue_id(issue['id'])
+            if issue['users_id_recipient'] not in self.config.exclude_issuers:
+                existing_issue_id = self.__get_existing_issue_id(issue['id'])
 
-            if existing_issue_id:
-                logging.info("Issue %s already exists, updating it", existing_issue_id)
-                self.session.execute(
-                    update(Issue).where(Issue.issue_id == existing_issue_id) \
-                                 .values(title=issue['name'], updated_at=date_to_datetime(issue['date_mod']))
-                )
-            else:
-                ottm_issue = Issue(
-                    project_id=self.project_id,
-                    number=issue['id'],
-                    title=issue['name'],
-                    source="glpi",
-                    created_at=date_to_datetime(issue['date']),
-                    updated_at=date_to_datetime(issue['date_mod']),
-                )
-                new_ottm_issues.append(ottm_issue)
+                if existing_issue_id:
+                    logging.info("Issue %s already exists, updating it", existing_issue_id)
+                    self.session.execute(
+                        update(Issue).where(Issue.issue_id == existing_issue_id) \
+                                    .values(title=issue['name'], updated_at=date_to_datetime(issue['date_mod']))
+                    )
+                else:
+                    ottm_issue = Issue(
+                        project_id=self.project_id,
+                        number=issue['id'],
+                        title=issue['name'],
+                        source="glpi",
+                        created_at=date_to_datetime(issue['date']),
+                        updated_at=date_to_datetime(issue['date_mod']),
+                    )
+                    new_ottm_issues.append(ottm_issue)
         
         self.session.add_all(new_ottm_issues)
         self.session.commit()
