@@ -1,7 +1,8 @@
 import logging
+from datetime import datetime
 
 from glpi_api import GLPI
-from sqlalchemy import update
+from sqlalchemy import desc, update
 
 from models.issue import Issue
 from utils.date import date_to_datetime
@@ -24,14 +25,40 @@ class GlpiConnector:
         """
         logging.info('GlpiConnector: create_issues')
 
-        glpi_issues = self._get_issues()
+        last_issue_date = self.__get_last_sinced_date()
+
+        glpi_issues = self._get_issues(updated_after=last_issue_date)
 
         logging.info('Syncing ' + str(len(glpi_issues)) + ' issue(s) from Glpi')
 
         self.__save_issues(glpi_issues)
 
-    def _get_issues(self):
-        return self.glpi.get_all_items('Ticket')
+    def __get_last_sinced_date(self) -> datetime:
+        last_issue_date = None
+
+        last_issue = self.session.query(Issue) \
+                         .filter(Issue.project_id == self.project_id and Issue.source == 'glpi') \
+                         .order_by(desc(Issue.updated_at)).first()
+        
+        if last_issue:
+            last_issue_date = last_issue.updated_at
+        
+        logging.info("Last issue date from database is : %s", last_issue_date)
+
+        return last_issue_date
+
+    def _get_issues(self, updated_after: datetime=None):
+        
+        if updated_after:
+            glpi_issues = []
+
+            for issue in self.glpi.get_all_items('Ticket'):
+                if date_to_datetime(issue['date_mod']) >= updated_after:
+                    glpi_issues.append(issue)
+        else:
+            glpi_issues = self.glpi.get_all_items('Ticket')
+
+        return glpi_issues
     
     def __save_issues(self, glpi_issues) -> None:
         new_ottm_issues = []
