@@ -5,7 +5,7 @@ from glpi_api import GLPI
 from sqlalchemy import desc, update
 
 from models.issue import Issue
-from utils.date import date_to_datetime
+from utils.date import date_hour_to_datetime
 from utils.timeit import timeit
 
 class GlpiConnector:
@@ -14,7 +14,7 @@ class GlpiConnector:
         self.config = config
         self.session = session
         self.project_id = project_id
-        self.glpi = GLPI(url=self.config.glpi_base_url,
+        self.__glpi = GLPI(url=self.config.glpi_base_url,
                          apptoken=self.config.glpi_app_token,
                          auth=(self.config.glpi_username, self.config.glpi_password))
     
@@ -52,11 +52,11 @@ class GlpiConnector:
         if updated_after:
             glpi_issues = []
 
-            for issue in self.glpi.get_all_items('Ticket'):
-                if date_to_datetime(issue['date_mod']) >= updated_after:
+            for issue in self.__glpi.get_all_items(self.config.glpi_category):
+                if date_hour_to_datetime(issue['date_mod']) > updated_after:
                     glpi_issues.append(issue)
         else:
-            glpi_issues = self.glpi.get_all_items('Ticket')
+            glpi_issues = self.__glpi.get_all_items(self.config.glpi_category)
 
         return glpi_issues
     
@@ -71,7 +71,7 @@ class GlpiConnector:
                     logging.info("Issue %s already exists, updating it", existing_issue_id)
                     self.session.execute(
                         update(Issue).where(Issue.issue_id == existing_issue_id) \
-                                    .values(title=issue['name'], updated_at=date_to_datetime(issue['date_mod']))
+                                    .values(title=issue['name'], updated_at=date_hour_to_datetime(issue['date_mod']))
                     )
                 else:
                     ottm_issue = Issue(
@@ -79,8 +79,8 @@ class GlpiConnector:
                         number=issue['id'],
                         title=issue['name'],
                         source="glpi",
-                        created_at=date_to_datetime(issue['date']),
-                        updated_at=date_to_datetime(issue['date_mod']),
+                        created_at=date_hour_to_datetime(issue['date']),
+                        updated_at=date_hour_to_datetime(issue['date_mod']),
                     )
                     new_ottm_issues.append(ottm_issue)
         

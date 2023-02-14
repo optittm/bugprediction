@@ -41,6 +41,7 @@ class Configuration:
         self.jira_token      = os.getenv("OTTM_JIRA_TOKEN", "")
         self.jira_issue_type = self.__get_str_list("OTTM_JIRA_ISSUE_TYPE")
 
+        self.glpi_category   = os.getenv("OTTM_GLPI_CATEGORY", "")
         self.glpi_base_url   = os.getenv("OTTM_GLPI_BASE_URL", "")
         self.glpi_app_token  = os.getenv("OTTM_GLPI_APP_TOKEN", "")
         self.glpi_username   = os.getenv("OTTM_GLPI_USERNAME", "")
