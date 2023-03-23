@@ -12,3 +12,10 @@ class Math():
     def get_rounded_rate(cls, value, total):
         rate = (1. * value / total) * 100
         return round(rate, cls.nb_decimal_numbers)
+    
+    @classmethod
+    def get_no_crash_mean(cls, a):
+        try:
+            return mean(a)
+        except:
+            return 0

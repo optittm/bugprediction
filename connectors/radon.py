@@ -1,13 +1,15 @@
 
 import logging
 import os
-import timeit
 
 from models.metric import Metric
 from radon.complexity import cc_visit, average_complexity
 from radon.raw import analyze, Module
 from radon.metrics import h_visit, HalsteadReport
 from radon.visitors import Function, Class
+from statistics import mean
+
+from utils.math import Math
 
 
 class RadonConnector:
@@ -101,7 +103,7 @@ class RadonConnector:
         self.comments = []                      
         self.docstring = []                     
         self.blank = []                         
-        self.simgle_comment = []                
+        self.single_comment = []                
         self.halstead_h1 = []                   
         self.halstead_h2 = []                   
         self.halstead_n1 = []                   
@@ -119,9 +121,12 @@ class RadonConnector:
         self.nof = []                           
         self.class_loc = []                     
         self.method_loc = []                    
-        self.func_loc = []                      
+        self.func_loc = []        
+        # calcule
+        self.calcul_noc = 0
+        self.calcul_nom = 0
+        self.calcul_nof = 0              
 
-    @timeit
     def analyze_source_code(self) -> None:
         """
         Analyzes the Python source code using the Radon library.
@@ -139,13 +144,16 @@ class RadonConnector:
             metric = Metric()
         
         # TODO it will maybe need to be updated
-        if (self.config.language != "Python"):
+        logging.info('RADON self.config.language = ' + self.config.language)
+        if (self.config.language.lower() != "python"):
             logging.info('RADON is only used for Python language')
         else:
             if (not metric.radon_cc_total):
                 self.compute_metrics(metric)
+            else:
+                logging.info('RADON analysis already done for this version, version: ' + str(self.version.version_id))
 
-    def compute_metrics(self, metric) -> None:
+    def compute_metrics(self, metric: Metric) -> None:
         """
         Computes the software metrics for the Python codebase.
 
@@ -159,22 +167,31 @@ class RadonConnector:
             for file in files:
                 file_path = os.path.join(root, file)
                 if (self.is_python_file(file)):
-                    with open(file_path, "r") as file:
+                    with open(file_path, "r", encoding="utf-8") as file:
                         code = file.read()
 
+                    # Recovery of radon metrics
                     cc_metrics = cc_visit(code)
                     raw_metrics = analyze(code)
                     h_metrics = h_visit(code)
 
+                    # Processing of recovered metrics
                     self.avg_cc.append(average_complexity(cc_metrics))
                     self.__compute_cc_metrics(cc_metrics)
                     self.__compute_raw_metrics(raw_metrics)
-                    self.__compute_halstead_metrics(h_metrics)
-        logging.info('Adding Radon analysis for this version')
+                    self.__compute_halstead_metrics(h_metrics.total)
+        logging.info('Adding Radon analysis for this version, version: ' + str(self.version.version_id))
         self.__store_metrics(metric)
 
 
     def __compute_cc_metrics(self, cc_metrics) -> None:
+
+            self.__calcule_cc_metrics(cc_metrics)
+            self.noc.append(self.calcul_noc)
+            self.nom.append(self.calcul_nom)
+            self.nof.append(self.calcul_nof)
+
+    def __calcule_cc_metrics(self, cc_metrics) -> None:
         """
         Computes the Cyclomatic Complexity metrics using the Radon library.
 
@@ -184,34 +201,29 @@ class RadonConnector:
         Returns:
         - None.
         """
-        if (cc_metrics.len() > 0):
-            noc = 0
-            nom = 0
-            nof = 0
+        if (len(cc_metrics) > 0):
             for metric in cc_metrics:
                 if (isinstance(metric, Function)):
                     # is methode metrics
                     if (metric.is_method):
-                        nom = nom + 1
-                        self.method_loc.add(metric.endline - metric.lineno)
+                        self.calcul_nom = self.calcul_nom + 1
+                        self.method_loc.append(metric.endline - metric.lineno)
                     # is function metrics
                     else:
-                        nof = nof + 1
+                        self.calcul_nof = self.calcul_nof + 1
                         self.func_loc.append(metric.endline - metric.lineno)
                         self.cc.append(metric.complexity)
                 # is class metrics
                 elif (isinstance(metric, Class)):
-                    noc = noc + 1
+                    self.calcul_noc = self.calcul_noc + 1
                     self.class_loc.append(metric.endline - metric.lineno)
-                    # compute methodes metrics
-                    self.__compute_cc_metrics(metric.methods)
-                    # compute inner class metrics
-                    self.__compute_cc_metrics(metric.inner_classes)
+                    # calcule methodes metrics
+                    self.__calcule_cc_metrics(metric.methods)
+                    # calcule inner class metrics
+                    self.__calcule_cc_metrics(metric.inner_classes)
                     self.cc.append(metric.real_complexity)
-
-            self.noc.append(noc)
-            self.nom.append(nom)
-            self.nof.append(nof)
+                else:
+                    raise TypeError("Unsupported RADON type")
 
     def __compute_raw_metrics(self, raw_metrics: Module) -> None:
         """
@@ -223,13 +235,16 @@ class RadonConnector:
         Returns:
         - None.
         """
-        self.loc.append(raw_metrics.loc)
-        self.lloc.append(raw_metrics.lloc)
-        self.sloc.append(raw_metrics.sloc)
-        self.comments.append(raw_metrics.comments)
-        self.docstring.append(raw_metrics.multi)
-        self.blank.append(raw_metrics.blank)
-        self.simgle_comment.append(raw_metrics.single_comments)
+        try:
+            self.loc.append(raw_metrics.loc)
+            self.lloc.append(raw_metrics.lloc)
+            self.sloc.append(raw_metrics.sloc)
+            self.comments.append(raw_metrics.comments)
+            self.docstring.append(raw_metrics.multi)
+            self.blank.append(raw_metrics.blank)
+            self.single_comment.append(raw_metrics.single_comments)
+        except AttributeError:
+            raise TypeError("Unsupported RADON type")
 
     def __compute_halstead_metrics(self, h_metrics: HalsteadReport) -> None:
         """
@@ -241,18 +256,21 @@ class RadonConnector:
         Returns:
         - None.
         """
-        self.halstead_h1.append(h_metrics.h1)
-        self.halstead_h2.append(h_metrics.h2)
-        self.halstead_n1.append(h_metrics.N1)
-        self.halstead_n2.append(h_metrics.N2)
-        self.halstead_vocabulary.append(h_metrics.vocabulary)
-        self.halstead_length.append(h_metrics.length)
-        self.halstead_calculated_length.append(h_metrics.calculated_length)
-        self.halstead_volume.append(h_metrics.volume)
-        self.halstead_difficulty.append(h_metrics.difficulty)
-        self.halstead_effort.append(h_metrics.effort)
-        self.halstead_time.append(h_metrics.time)
-        self.halstead_bugs.append(h_metrics.bugs)
+        try:
+            self.halstead_h1.append(h_metrics.h1)
+            self.halstead_h2.append(h_metrics.h2)
+            self.halstead_n1.append(h_metrics.N1)
+            self.halstead_n2.append(h_metrics.N2)
+            self.halstead_vocabulary.append(h_metrics.vocabulary)
+            self.halstead_length.append(h_metrics.length)
+            self.halstead_calculated_length.append(h_metrics.calculated_length)
+            self.halstead_volume.append(h_metrics.volume)
+            self.halstead_difficulty.append(h_metrics.difficulty)
+            self.halstead_effort.append(h_metrics.effort)
+            self.halstead_time.append(h_metrics.time)
+            self.halstead_bugs.append(h_metrics.bugs)
+        except AttributeError:
+            raise TypeError("Unsupported RADON type")
 
     def __store_metrics(self, metric: Metric) -> None:
         """
@@ -265,60 +283,63 @@ class RadonConnector:
             None
         """
         metric.radon_cc_total = sum(self.cc)
-        metric.radon_cc_avg = sum(self.cc) / self.cc.len()
+        metric.radon_cc_avg = Math.get_no_crash_mean(self.cc)
         metric.radon_loc_total = sum(self.loc)
-        metric.radon_loc_avg = sum(self.loc) / self.loc.len()
+        metric.radon_loc_avg = Math.get_no_crash_mean(self.loc)
         metric.radon_lloc_total = sum(self.lloc)
-        metric.radon_lloc_avg = sum(self.lloc) / self.lloc.len()
+        metric.radon_lloc_avg = Math.get_no_crash_mean(self.lloc)
         metric.radon_sloc_total = sum(self.sloc)
-        metric.radon_sloc_avg = sum(self.sloc) / self.sloc.len()
+        metric.radon_sloc_avg = Math.get_no_crash_mean(self.sloc)
         metric.radon_comments_total = sum(self.comments)
-        metric.radon_comments_avg = sum(self.comments) / self.comments.len()
+        metric.radon_comments_avg = Math.get_no_crash_mean(self.comments)
         metric.radon_docstring_total = sum(self.docstring)
-        metric.radon_docstring_avg = sum(self.docstring) / self.docstring.len()
+        metric.radon_docstring_avg = Math.get_no_crash_mean(self.docstring)
         metric.radon_blank_total = sum(self.blank)
-        metric.radon_blank_avg = sum(self.blank) / self.blank.len()
-        metric.radon_single_comments_total = sum(self.simgle_comment)
-        metric.radon_single_comments_avg = sum(self.simgle_comment) / self.simgle_comment.len()
+        metric.radon_blank_avg = Math.get_no_crash_mean(self.blank)
+        metric.radon_single_comments_total = sum(self.single_comment)
+        metric.radon_single_comments_avg = Math.get_no_crash_mean(self.single_comment)
         metric.radon_halstead_h1_total = sum(self.halstead_h1)
-        metric.radon_halstead_h1_avg = sum(self.halstead_h1) / self.halstead_h1.len()
+        metric.radon_halstead_h1_avg = Math.get_no_crash_mean(self.halstead_h1)
         metric.radon_halstead_h2_total = sum(self.halstead_h2)
-        metric.radon_halstead_h2_avg = sum(self.halstead_h2) / self.halstead_h2.len()
+        metric.radon_halstead_h2_avg = Math.get_no_crash_mean(self.halstead_h2)
         metric.radon_halstead_n1_total = sum(self.halstead_n1)
-        metric.radon_halstead_n1_avg = sum(self.halstead_n1) / self.halstead_n1.len()
+        metric.radon_halstead_n1_avg = Math.get_no_crash_mean(self.halstead_n1)
         metric.radon_halstead_n2_total = sum(self.halstead_n2)
-        metric.radon_halstead_n2_avg = sum(self.halstead_n2) / self.halstead_n2.len()
+        metric.radon_halstead_n2_avg = Math.get_no_crash_mean(self.halstead_n2)
         metric.radon_halstead_vocabulary_total = sum(self.halstead_vocabulary)
-        metric.radon_halstead_vocabulary_avg = sum(self.halstead_vocabulary) / self.halstead_vocabulary.len()
+        metric.radon_halstead_vocabulary_avg = Math.get_no_crash_mean(self.halstead_vocabulary)
         metric.radon_halstead_length_total = sum(self.halstead_length)
-        metric.radon_halstead_length_avg = sum(self.halstead_length) / self.halstead_length.len()
+        metric.radon_halstead_length_avg = Math.get_no_crash_mean(self.halstead_length)
         metric.radon_halstead_calculated_length_total = sum(self.halstead_calculated_length)
-        metric.radon_halstead_calculated_length_avg = sum(self.halstead_calculated_length) / self.halstead_calculated_length.len()
+        metric.radon_halstead_calculated_length_avg = Math.get_no_crash_mean(self.halstead_calculated_length)
         metric.radon_halstead_volume_total = sum(self.halstead_volume)
-        metric.radon_halstead_volume_avg = sum(self.halstead_volume) / self.halstead_volume.len()
+        metric.radon_halstead_volume_avg = Math.get_no_crash_mean(self.halstead_volume)
         metric.radon_halstead_difficulty_total = sum(self.halstead_difficulty)
-        metric.radon_halstead_difficulty_avg = sum(self.halstead_difficulty) / self.halstead_difficulty.len()
+        metric.radon_halstead_difficulty_avg = Math.get_no_crash_mean(self.halstead_difficulty)
         metric.radon_halstead_effort_total = sum(self.halstead_effort)
-        metric.radon_halstead_effort_avg = sum(self.halstead_effort) / self.halstead_effort.len()
+        metric.radon_halstead_effort_avg = Math.get_no_crash_mean(self.halstead_effort)
         metric.radon_halstead_time_total = sum(self.halstead_time)
-        metric.radon_halstead_time_avg = sum(self.halstead_time) / self.halstead_time.len()
+        metric.radon_halstead_time_avg = Math.get_no_crash_mean(self.halstead_time)
         metric.radon_halstead_bugs_total = sum(self.halstead_bugs)
-        metric.radon_halstead_bugs_avg = sum(self.halstead_bugs) / self.halstead_bugs.len()
+        metric.radon_halstead_bugs_avg = Math.get_no_crash_mean(self.halstead_bugs)
         metric.radon_noc_total = sum(self.noc)
-        metric.radon_noc_avg = sum(self.noc) / self.noc.len()
+        metric.radon_noc_avg = Math.get_no_crash_mean(self.noc)
         metric.radon_nom_total = sum(self.nom)
-        metric.radon_nom_avg = sum(self.nom) / self.nom.len()
+        metric.radon_nom_avg = Math.get_no_crash_mean(self.nom)
         metric.radon_nof_total = sum(self.nof)
-        metric.radon_nof_avg = sum(self.nof) / self.nof.len()
+        metric.radon_nof_avg = Math.get_no_crash_mean(self.nof)
         metric.radon_class_loc_total = sum(self.class_loc)
-        metric.radon_class_loc_avg = sum(self.class_loc) / self.class_loc.len()
+        metric.radon_class_loc_avg = Math.get_no_crash_mean(self.class_loc)
         metric.radon_method_loc_total = sum(self.method_loc)
-        metric.radon_method_loc_avg = sum(self.method_loc) / self.method_loc.len()
+        metric.radon_method_loc_avg = Math.get_no_crash_mean(self.method_loc)
         metric.radon_func_loc_total = sum(self.func_loc)
-        metric.radon_func_loc_avg = sum(self.func_loc) / self.func_loc.len()
+        metric.radon_func_loc_avg = Math.get_no_crash_mean(self.func_loc)
         
+        # Save metrics values into the database
+        self.session.add(metric)
+        self.session.commit()
 
-    def is_python_file(file_name) -> bool:
+    def is_python_file(self, file_name) -> bool:
         """
         Checks if a given file name corresponds to a Python file.
 

@@ -44,6 +44,7 @@ If you use Jira, you can fill the next variables, otherwise leave them by defaul
  - ```OTTM_JIRA_EMAIL``` : Jira user email address. To access Jira API, you need to provide your access tokend AND your email adress
  - ```OTTM_JIRA_TOKEN``` : Token to access Jira (see the "How to get your tokens" section)
  - ```OTTM_JIRA_ISSUE_TYPE```: When Jira is used as the bug reporting tool, you can filter issues by their issue type. You can specify several filters, comma separeted. Usually, bugs are repported on "Bug" issue type.
+ - ```OTTM_LANGUAGE```: The language of the source repo ("Java" for dbeaver or fx2048)
  
  The first step (it might take a while) is to populate the database with versions, issues and commits. The repository will be cloned into a temporary folder and it will check all versions out in order to generate code metrics. You can run this command multiple times later on as it will only amend the database with latest changes.
 
