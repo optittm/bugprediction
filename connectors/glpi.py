@@ -10,13 +10,22 @@ from utils.timeit import timeit
 
 class GlpiConnector:
 
+    __item_type = "Ticket"
+    __category_type = "ITILCategory"
+    __user_type = "User"
+
     def __init__(self, project_id, session, config) -> None:
         self.config = config
         self.session = session
         self.project_id = project_id
-        self.__glpi = GLPI(url=self.config.glpi_base_url,
-                         apptoken=self.config.glpi_app_token,
-                         auth=(self.config.glpi_username, self.config.glpi_password))
+        if self.config.glpi_user_token:
+            self.__glpi = GLPI(url=self.config.glpi_base_url,
+                            apptoken=self.config.glpi_app_token,
+                            auth=self.config.glpi_user_token)
+        else:
+            self.__glpi = GLPI(url=self.config.glpi_base_url,
+                            apptoken=self.config.glpi_app_token,
+                            auth=(self.config.glpi_username, self.config.glpi_password))
     
     @timeit
     def create_issues(self):
@@ -48,23 +57,48 @@ class GlpiConnector:
         return last_issue_date
 
     def _get_issues(self, updated_after: datetime=None):
-        
-        if updated_after:
-            glpi_issues = []
 
-            for issue in self.__glpi.get_all_items(self.config.glpi_category):
-                if date_hour_to_datetime(issue['date_mod']) > updated_after:
-                    glpi_issues.append(issue)
+        categories_ids = self.__glpi_get_categories_ids()
+
+        if categories_ids:
+            glpi_tickets = []
+            for category_id in categories_ids:
+                glpi_tickets.extend(
+                    self.__glpi.get_all_items(self.__item_type, **{"searchText[itilcategories_id]": category_id})
+                )
         else:
-            glpi_issues = self.__glpi.get_all_items(self.config.glpi_category)
+            glpi_tickets = self.__glpi.get_all_items(self.__item_type)
 
-        return glpi_issues
+        glpi_tickets_filtered_with_date = []
+        if updated_after:
+            glpi_tickets_filtered_with_date = []
+
+            for ticket in glpi_tickets:
+                if date_hour_to_datetime(ticket['date_mod']) > updated_after:
+                    glpi_tickets_filtered_with_date.append(ticket)
+        else:
+            glpi_tickets_filtered_with_date = glpi_tickets
+
+        return glpi_tickets_filtered_with_date
+
+    def __glpi_get_categories_ids(self):
+
+        categories_ids = []
+
+        for category in self.config.glpi_categories:
+            itil_categories = self.__glpi.get_all_items(self.__category_type, **{"searchText[name]": category})
+            for itil_category in itil_categories:
+                categories_ids.append(itil_category["id"])
+
+        return categories_ids
     
     def __save_issues(self, glpi_issues) -> None:
         new_ottm_issues = []
 
+        users_dict = self.__glpi_get_users_dict()
+
         for issue in glpi_issues:
-            if issue['users_id_recipient'] not in self.config.exclude_issuers:
+            if users_dict[issue['users_id_recipient']] not in self.config.exclude_issuers:
                 existing_issue_id = self.__get_existing_issue_id(issue['id'])
 
                 if existing_issue_id:
@@ -86,6 +120,13 @@ class GlpiConnector:
         
         self.session.add_all(new_ottm_issues)
         self.session.commit()
+
+    def __glpi_get_users_dict(self):
+        glpi_users = self.__glpi.get_all_items(self.__user_type)
+        users_dict = {}
+        for user in glpi_users:
+            users_dict[user["id"]] = user["name"]
+        return users_dict
 
     def __get_existing_issue_id(self, issue_number) -> int:
         existing_issue_id = None

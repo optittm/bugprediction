@@ -33,9 +33,10 @@ You need to create and ```data/.env``` file (by copying the ```.env-example```) 
  - ```OTTM_JIRA_EMAIL``` : Jira user email address. To access Jira API, you need to provide your access tokend AND your email adress
  - ```OTTM_JIRA_TOKEN``` : Token to access jira
  - ```OTTM_JIRA_ISSUE_TYPE```: When Jira is used as the bug reporting tool, you can filter issues by their issue type. You can specify several filters, comma separeted. Usually, bugs are repported on "Bug" issue type.
- - ```OTTM_GLPI_CATEGORY``` : Category of Glpi tickets
+ - ```OTTM_GLPI_CATEGORIES``` : Categories of Glpi tickets. Only the child categories has to be precised.
  - ```OTTM_GLPI_BASE_URL``` : The full path to glpi API (e.g. http://localhost/apirest.php/)
- - ```OTTM_GLPI_APP_TOKEN``` : Glpi token to access Glpi API
+ - ```OTTM_GLPI_APP_TOKEN``` : Glpi app token
+ - ```OTTM_GLPI_USER_TOKEN``` : Glpi user token. To acces GLPI API, you have to chose between using user token, or basic auth login/password
  - ```OTTM_GLPI_USERNAME``` : Glpi username
  - ```OTTM_GLPI_PASSWORD``` : Glpi password
  
