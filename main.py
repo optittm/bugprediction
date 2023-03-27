@@ -320,10 +320,11 @@ def populate(ctx, skip_versions,
                 # jp.analyze_source_code()
             
             elif (configuration.language.lower() != "python"):
-
+                
                 # Get metrics with Radon
                 # radon = radon_connector_provider(directory = tmp_work_dir, version = version)
                 # radon.analyze_source_code()
+                pass
 
     
 
