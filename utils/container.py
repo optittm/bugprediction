@@ -8,6 +8,7 @@ from ml.ml import ml
 from connectors.ck import CkConnector
 from connectors.jpeek import JPeekConnector
 from connectors.legacy import LegacyConnector
+from connectors.pylint import PylintConnector
 from connectors.codemaat import CodeMaatConnector
 from connectors.fileanalyzer import FileAnalyzer
 from connectors.git import GitConnector
@@ -44,6 +45,12 @@ class Container(containers.DeclarativeContainer):
     
     jpeek_connector_provider = providers.Factory(
         JPeekConnector,
+        session = session,
+        config = configuration
+    )
+
+    pylint_connector_provider = providers.Factory(
+        PylintConnector,
         session = session,
         config = configuration
     )

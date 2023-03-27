@@ -85,3 +85,23 @@ class Metric(Base):
 
     # legacy
     nb_legacy_files = Column(Integer)
+
+    # pylint
+    pylint_score = Column(Float)
+    pylint_code = Column(Integer)
+    pylint_code_avg = Column(Float)
+    pylint_docstring = Column(Integer)
+    pylint_docstring_avg = Column(Float)
+    pylint_comment = Column(Integer)
+    pylint_comment_avg = Column(Float)
+    pylint_blank = Column(Integer)
+    pylint_nmodule = Column(Integer)
+    pylint_noc = Column(Integer)
+    pylint_nom = Column(Integer)
+    pylint_nof = Column(Integer)
+    pylint_dup_line = Column(Integer)
+    pylint_num_msg = Column(Integer)
+    pylint_module_comment_avg = Column(Float)
+    pylint_mclass_comment_avg = Column(Float)
+    pylint_methode_comment_avg = Column(Float)
+    pylint_function_comment_avg = Column(Float)
