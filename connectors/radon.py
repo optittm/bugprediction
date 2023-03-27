@@ -338,17 +338,3 @@ class RadonConnector:
         # Save metrics values into the database
         self.session.add(metric)
         self.session.commit()
-
-    def is_python_file(self, file_name) -> bool:
-        """
-        Checks if a given file name corresponds to a Python file.
-
-        Args:
-            file_name (str): The name of the file to check.
-
-        Returns:
-            bool: `True` if the file name corresponds to a Python file, `False` otherwise.
-        """
-        extension = file_name.split('.')[-1].lower()
-        # Vérifier si l'extension correspond à un fichier Python
-        return extension == 'py'

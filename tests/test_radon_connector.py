@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, Mock
 from connectors.radon import RadonConnector
 from radon.visitors import Function, Class
 
+from utils.proglang import is_python_file
+
 
 class TestRadonConnector(unittest.TestCase):
     def setUp(self):
@@ -98,11 +100,11 @@ class TestRadonConnector(unittest.TestCase):
             self.radon_connector._RadonConnector__compute_halstead_metrics(h_metrics)
 
     def test_is_python_file_true(self):
-        result = self.radon_connector.is_python_file("example.py")
+        result = is_python_file("example.py")
         self.assertTrue(result)
 
     def test_is_python_file_false(self):
-        result = self.radon_connector.is_python_file("example.txt")
+        result = is_python_file("example.txt")
         self.assertFalse(result)
 
 if __name__ == '__main__':
