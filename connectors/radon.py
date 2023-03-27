@@ -5,16 +5,16 @@ import os
 from models.metric import Metric
 from radon.complexity import cc_visit, average_complexity
 from radon.raw import analyze, Module
-from radon.metrics import h_visit, HalsteadReport
 from radon.visitors import Function, Class
 from statistics import mean
 
 from utils.math import Math
+from utils.proglang import is_python_file
 
 
 class RadonConnector:
     """
-    Classe qui permet de calculer des métriques de code à l'aide de la bibliothèque Radon.
+    Class that allows calculating code metrics using the Radon library.
     """
 
     def __init__(self, directory, version, session, config) -> None:
@@ -97,25 +97,13 @@ class RadonConnector:
         # Metrics
         self.cc = []                            
         self.avg_cc = []                        
-        self.loc = []                           
+        self.loc = []
         self.lloc = []                          
         self.sloc = []                          
         self.comments = []                      
         self.docstring = []                     
         self.blank = []                         
-        self.single_comment = []                
-        self.halstead_h1 = []                   
-        self.halstead_h2 = []                   
-        self.halstead_n1 = []                   
-        self.halstead_n2 = []                   
-        self.halstead_vocabulary = []           
-        self.halstead_length = []               
-        self.halstead_calculated_length = []    
-        self.halstead_volume = []               
-        self.halstead_difficulty = []           
-        self.halstead_effort = []               
-        self.halstead_time = []                 
-        self.halstead_bugs = []                 
+        self.single_comment = []                     
         self.noc = []                           
         self.nom = []                           
         self.nof = []                           
@@ -166,20 +154,18 @@ class RadonConnector:
         for root, dirs, files in os.walk(self.directory):
             for file in files:
                 file_path = os.path.join(root, file)
-                if (self.is_python_file(file)):
+                if (is_python_file(file)):
                     with open(file_path, "r", encoding="utf-8") as file:
                         code = file.read()
 
                     # Recovery of radon metrics
                     cc_metrics = cc_visit(code)
                     raw_metrics = analyze(code)
-                    h_metrics = h_visit(code)
 
                     # Processing of recovered metrics
                     self.avg_cc.append(average_complexity(cc_metrics))
                     self.__compute_cc_metrics(cc_metrics)
                     self.__compute_raw_metrics(raw_metrics)
-                    self.__compute_halstead_metrics(h_metrics.total)
         logging.info('Adding Radon analysis for this version, version: ' + str(self.version.version_id))
         self.__store_metrics(metric)
 
@@ -246,32 +232,6 @@ class RadonConnector:
         except AttributeError:
             raise TypeError("Unsupported RADON type")
 
-    def __compute_halstead_metrics(self, h_metrics: HalsteadReport) -> None:
-        """
-        Computes the Halstead metrics using the Radon library.
-
-        Args:
-        - h_metrics: The Halstead metrics object returned by the Radon library.
-
-        Returns:
-        - None.
-        """
-        try:
-            self.halstead_h1.append(h_metrics.h1)
-            self.halstead_h2.append(h_metrics.h2)
-            self.halstead_n1.append(h_metrics.N1)
-            self.halstead_n2.append(h_metrics.N2)
-            self.halstead_vocabulary.append(h_metrics.vocabulary)
-            self.halstead_length.append(h_metrics.length)
-            self.halstead_calculated_length.append(h_metrics.calculated_length)
-            self.halstead_volume.append(h_metrics.volume)
-            self.halstead_difficulty.append(h_metrics.difficulty)
-            self.halstead_effort.append(h_metrics.effort)
-            self.halstead_time.append(h_metrics.time)
-            self.halstead_bugs.append(h_metrics.bugs)
-        except AttributeError:
-            raise TypeError("Unsupported RADON type")
-
     def __store_metrics(self, metric: Metric) -> None:
         """
         Calculates and stores various software metrics for a given `Metric` object.
@@ -298,30 +258,6 @@ class RadonConnector:
         metric.radon_blank_avg = Math.get_no_crash_mean(self.blank)
         metric.radon_single_comments_total = sum(self.single_comment)
         metric.radon_single_comments_avg = Math.get_no_crash_mean(self.single_comment)
-        metric.radon_halstead_h1_total = sum(self.halstead_h1)
-        metric.radon_halstead_h1_avg = Math.get_no_crash_mean(self.halstead_h1)
-        metric.radon_halstead_h2_total = sum(self.halstead_h2)
-        metric.radon_halstead_h2_avg = Math.get_no_crash_mean(self.halstead_h2)
-        metric.radon_halstead_n1_total = sum(self.halstead_n1)
-        metric.radon_halstead_n1_avg = Math.get_no_crash_mean(self.halstead_n1)
-        metric.radon_halstead_n2_total = sum(self.halstead_n2)
-        metric.radon_halstead_n2_avg = Math.get_no_crash_mean(self.halstead_n2)
-        metric.radon_halstead_vocabulary_total = sum(self.halstead_vocabulary)
-        metric.radon_halstead_vocabulary_avg = Math.get_no_crash_mean(self.halstead_vocabulary)
-        metric.radon_halstead_length_total = sum(self.halstead_length)
-        metric.radon_halstead_length_avg = Math.get_no_crash_mean(self.halstead_length)
-        metric.radon_halstead_calculated_length_total = sum(self.halstead_calculated_length)
-        metric.radon_halstead_calculated_length_avg = Math.get_no_crash_mean(self.halstead_calculated_length)
-        metric.radon_halstead_volume_total = sum(self.halstead_volume)
-        metric.radon_halstead_volume_avg = Math.get_no_crash_mean(self.halstead_volume)
-        metric.radon_halstead_difficulty_total = sum(self.halstead_difficulty)
-        metric.radon_halstead_difficulty_avg = Math.get_no_crash_mean(self.halstead_difficulty)
-        metric.radon_halstead_effort_total = sum(self.halstead_effort)
-        metric.radon_halstead_effort_avg = Math.get_no_crash_mean(self.halstead_effort)
-        metric.radon_halstead_time_total = sum(self.halstead_time)
-        metric.radon_halstead_time_avg = Math.get_no_crash_mean(self.halstead_time)
-        metric.radon_halstead_bugs_total = sum(self.halstead_bugs)
-        metric.radon_halstead_bugs_avg = Math.get_no_crash_mean(self.halstead_bugs)
         metric.radon_noc_total = sum(self.noc)
         metric.radon_noc_avg = Math.get_no_crash_mean(self.noc)
         metric.radon_nom_total = sum(self.nom)

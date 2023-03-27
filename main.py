@@ -310,7 +310,7 @@ def populate(ctx, skip_versions,
             lizard = file_analyzer_provider(directory=tmp_work_dir, version=version)
             lizard.analyze_source_code()
 
-            if (configuration.language.lower() != "java"):
+            if (configuration.language.lower() == "java"):
                 # Get metrics with CK
                 ck = ck_connector_provider(directory=tmp_work_dir, version=version)
                 ck.analyze_source_code()
@@ -319,12 +319,11 @@ def populate(ctx, skip_versions,
                 # jp = jpeek_connector_provider(directory=tmp_work_dir, version=version)
                 # jp.analyze_source_code()
             
-            elif (configuration.language.lower() != "python"):
+            elif (configuration.language.lower() == "python"):
                 
                 # Get metrics with Radon
-                # radon = radon_connector_provider(directory = tmp_work_dir, version = version)
-                # radon.analyze_source_code()
-                pass
+                radon = radon_connector_provider(directory = tmp_work_dir, version = version)
+                radon.analyze_source_code()
 
     
 

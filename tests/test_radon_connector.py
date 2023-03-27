@@ -61,39 +61,6 @@ class TestRadonConnector(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.radon_connector._RadonConnector__compute_raw_metrics(raw_metrics)
 
-    def test_compute_halstead_metrics_with_supported_metrics(self):
-        # Set up a mock HalsteadReport object to use as input
-        mock_report = MagicMock()
-        mock_report.h1 = 10
-        mock_report.h2 = 20
-        mock_report.N1 = 30
-        mock_report.N2 = 40
-        mock_report.vocabulary = 50
-        mock_report.length = 60
-        mock_report.calculated_length = 70
-        mock_report.volume = 80
-        mock_report.difficulty = 90
-        mock_report.effort = 100
-        mock_report.time = 110
-        mock_report.bugs = 120
-
-        # Call the method with the mock report
-        self.radon_connector._RadonConnector__compute_halstead_metrics(mock_report)
-
-        # Assert that all of the values in the Halstead metrics lists have been updated correctly
-        self.assertEqual(self.radon_connector.halstead_h1, [10])
-        self.assertEqual(self.radon_connector.halstead_h2, [20])
-        self.assertEqual(self.radon_connector.halstead_n1, [30])
-        self.assertEqual(self.radon_connector.halstead_n2, [40])
-        self.assertEqual(self.radon_connector.halstead_vocabulary, [50])
-        self.assertEqual(self.radon_connector.halstead_length, [60])
-        self.assertEqual(self.radon_connector.halstead_calculated_length, [70])
-        self.assertEqual(self.radon_connector.halstead_volume, [80])
-        self.assertEqual(self.radon_connector.halstead_difficulty, [90])
-        self.assertEqual(self.radon_connector.halstead_effort, [100])
-        self.assertEqual(self.radon_connector.halstead_time, [110])
-        self.assertEqual(self.radon_connector.halstead_bugs, [120])
-
     def test_compute_halstead_metrics_with_unsupported_metrics(self):
         h_metrics = {}
         with self.assertRaises(TypeError):
