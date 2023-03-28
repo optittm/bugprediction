@@ -113,7 +113,7 @@ class RadonConnector:
             logging.info('RADON is only used for Python language')
         else:
             if (not metric.radon_cc_total):
-                self.compute_metrics(metric)
+                self.compute_metrics()
                 self.__store_metrics(metric)
             else:
                 logging.info('RADON analysis already done for this version, version: ' + str(self.version.version_id))
