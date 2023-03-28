@@ -61,5 +61,4 @@ def is_python_file(file_name) -> bool:
         bool: `True` if the file name corresponds to a Python file, `False` otherwise.
     """
     extension = file_name.split('.')[-1].lower()
-    # Vérifier si l'extension correspond à un fichier Python
     return extension == 'py'

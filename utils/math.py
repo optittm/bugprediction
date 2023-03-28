@@ -16,5 +16,5 @@ class Math():
     @classmethod
     def get_mean_safe(cls, value):
         if (len(value) > 0):
-            return mean(value)
+            return round(mean(value), cls.nb_decimal_numbers)
         return 0

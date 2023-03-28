@@ -27,7 +27,7 @@ You need to create a file in the project directory called ```.env```, you should
 
  - ```OTTM_SCM_PATH``` : Path to git executable, leave "git" if it's into system env. path
  - ```OTTM_SOURCE_PROJECT``` : Name of the project (e.g. dbeaver or fx2048 or python-fire)
- - ```OTTM_SOURCE_REPO``` : Repositiory name (e.g. dbeaver/dbeaveror or brunoborges/fx2048or or google/python-fire)
+ - ```OTTM_SOURCE_REPO``` : Repositiory name (e.g. dbeaver/dbeaver or brunoborges/fx2048 or google/python-fire)
  - ```OTTM_CURRENT_BRANCH``` :  The branch containing the next release (e.g. devel for dbeaver or master for fx2048 and python-fire)
  - ```OTTM_SOURCE_REPO_URL``` : # The full path to repo (e.g. https://github.com/dbeaver/dbeaver or https://github.com/brunoborges/fx2048 or https://github.com/google/python-fire.git)
  - ```OTTM_SOURCE_BUGS``` : Source where we get issues (e.g. git)

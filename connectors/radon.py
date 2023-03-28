@@ -1,4 +1,5 @@
 
+import glob
 import logging
 import os
 
@@ -85,11 +86,7 @@ class RadonConnector:
         self.nof = []                           
         self.class_loc = []                     
         self.method_loc = []                    
-        self.func_loc = []        
-        # calcule
-        self.calcul_noc = 0
-        self.calcul_nom = 0
-        self.calcul_nof = 0              
+        self.func_loc = []                  
 
     def analyze_source_code(self) -> None:
         """
@@ -107,7 +104,6 @@ class RadonConnector:
         if (not metric):
             metric = Metric()
         
-        # TODO it will maybe need to be updated
         logging.info('RADON self.config.language = ' + self.config.language)
         if (self.config.language.lower() != "python"):
             logging.info('RADON is only used for Python language')
@@ -128,32 +124,30 @@ class RadonConnector:
         Returns:
         - None.
         """
-        for root, dirs, files in os.walk(self.directory):
-            for file in files:
-                file_path = os.path.join(root, file)
-                if (is_python_file(file)):
-                    with open(file_path, "r", encoding="utf-8") as file:
-                        code = file.read()
+        python_files = glob.glob(self.directory + '/**/*.py', recursive=True)
+        for file in python_files:
+            with open(file, "r", encoding="utf-8") as file:
+                code = file.read()
 
-                    # Recovery of radon metrics
-                    cc_metrics = cc_visit(code)
-                    raw_metrics = analyze(code)
+            # Recovery of radon metrics
+            cc_metrics = cc_visit(code)
+            raw_metrics = analyze(code)
 
-                    # Processing of recovered metrics
-                    self.avg_cc.append(average_complexity(cc_metrics))
-                    self.__compute_cc_metrics(cc_metrics)
-                    self.__compute_raw_metrics(raw_metrics)
+            # Processing of recovered metrics
+            self.avg_cc.append(average_complexity(cc_metrics))
+            self.__compute_cc_metrics(cc_metrics)
+            self.__get_raw_metrics(raw_metrics)
         logging.info('Adding Radon analysis for this version, version: ' + str(self.version.version_id))
 
 
     def __compute_cc_metrics(self, cc_metrics) -> None:
 
-            self.__calcule_cc_metrics(cc_metrics)
-            self.noc.append(self.calcul_noc)
-            self.nom.append(self.calcul_nom)
-            self.nof.append(self.calcul_nof)
+            noc, nom, nof = self.__calcule_cc_metrics(cc_metrics)
+            self.noc.append(noc)
+            self.nom.append(nom)
+            self.nof.append(nof)
 
-    def __calcule_cc_metrics(self, cc_metrics) -> None:
+    def __calcule_cc_metrics(self, cc_metrics, noc = 0, nom = 0, nof = 0) -> None:
         """
         Computes the Cyclomatic Complexity metrics using the Radon library.
 
@@ -167,26 +161,27 @@ class RadonConnector:
             if (isinstance(metric, Function)):
                 # is methode metrics
                 if (metric.is_method):
-                    self.calcul_nom = self.calcul_nom + 1
+                    nom = nom + 1
                     self.method_loc.append(metric.endline - metric.lineno)
                 # is function metrics
                 else:
-                    self.calcul_nof = self.calcul_nof + 1
+                    nof = nof + 1
                     self.func_loc.append(metric.endline - metric.lineno)
                     self.cc.append(metric.complexity)
             # is class metrics
             elif (isinstance(metric, Class)):
-                self.calcul_noc = self.calcul_noc + 1
+                noc = noc + 1
                 self.class_loc.append(metric.endline - metric.lineno)
                 # calcule methodes metrics
-                self.__calcule_cc_metrics(metric.methods)
+                noc, nom, nof = self.__calcule_cc_metrics(metric.methods, noc, nom, nof)
                 # calcule inner class metrics
-                self.__calcule_cc_metrics(metric.inner_classes)
+                noc, nom, nof = self.__calcule_cc_metrics(metric.inner_classes, noc, nom, nof)
                 self.cc.append(metric.real_complexity)
             else:
                 raise TypeError("Unsupported RADON type")
+        return noc, nom, nof
 
-    def __compute_raw_metrics(self, raw_metrics: Module) -> None:
+    def __get_raw_metrics(self, raw_metrics: Module) -> None:
         """
         Computes the Raw metrics using the Radon library.
 

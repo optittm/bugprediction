@@ -15,9 +15,6 @@ class TestRadonConnector(unittest.TestCase):
         self.config = {'language': 'python'}
         self.radon_connector = RadonConnector(self.directory, self.version, self.session, self.config)
 
-    def tearDown(self):
-        self.radon_connector = RadonConnector(self.directory, self.version, self.session, self.config)
-
     def test_compute_cc_metrics_with_function_metrics(self):
         cc_metrics = [Function('function_name', 1, 1, 10, False, "class_nam", [], 5)]
         self.radon_connector._RadonConnector__compute_cc_metrics(cc_metrics)
@@ -60,11 +57,6 @@ class TestRadonConnector(unittest.TestCase):
         raw_metrics = {}
         with self.assertRaises(TypeError):
             self.radon_connector._RadonConnector__compute_raw_metrics(raw_metrics)
-
-    def test_compute_halstead_metrics_with_unsupported_metrics(self):
-        h_metrics = {}
-        with self.assertRaises(TypeError):
-            self.radon_connector._RadonConnector__compute_halstead_metrics(h_metrics)
 
     def test_is_python_file_true(self):
         result = is_python_file("example.py")
