@@ -14,8 +14,7 @@ class Math():
         return round(rate, cls.nb_decimal_numbers)
     
     @classmethod
-    def get_no_crash_mean(cls, a):
-        try:
-            return mean(a)
-        except:
-            return 0
+    def get_mean_safe(cls, value):
+        if (len(value) > 0):
+            return mean(value)
+        return 0

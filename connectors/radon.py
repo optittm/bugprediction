@@ -52,30 +52,6 @@ class RadonConnector:
             Total number of blank lines.
         single_comment: List[int]
             Total number of single-line comments.
-        halstead_h1: List[int]
-            Number of distinct operators.
-        halstead_h2: List[int]
-            Number of distinct operands.
-        halstead_n1: List[int]
-            Total number of operators.
-        halstead_n2: List[int]
-            Total number of operands.
-        halstead_vocabulary: List[int]
-            Vocabulary of the program.
-        halstead_length: List[int]
-            Program length.
-        halstead_calculated_length: List[int]
-            Program calculated length.
-        halstead_volume: List[int]
-            Program volume.
-        halstead_difficulty: List[int]
-            Program difficulty.
-        halstead_effort: List[int]
-            Program effort.
-        halstead_time: List[float]
-            Estimated time to write the program.
-        halstead_bugs: List[float]
-            Estimated number of bugs.
         noc: List[int]
             Number of classes.
         nom: List[int]
@@ -138,15 +114,16 @@ class RadonConnector:
         else:
             if (not metric.radon_cc_total):
                 self.compute_metrics(metric)
+                self.__store_metrics(metric)
             else:
                 logging.info('RADON analysis already done for this version, version: ' + str(self.version.version_id))
 
-    def compute_metrics(self, metric: Metric) -> None:
+    def compute_metrics(self) -> None:
         """
         Computes the software metrics for the Python codebase.
 
         Args:
-        - metric: The Metric object for the version in the database.
+        - None
 
         Returns:
         - None.
@@ -167,7 +144,6 @@ class RadonConnector:
                     self.__compute_cc_metrics(cc_metrics)
                     self.__compute_raw_metrics(raw_metrics)
         logging.info('Adding Radon analysis for this version, version: ' + str(self.version.version_id))
-        self.__store_metrics(metric)
 
 
     def __compute_cc_metrics(self, cc_metrics) -> None:
@@ -187,29 +163,28 @@ class RadonConnector:
         Returns:
         - None.
         """
-        if (len(cc_metrics) > 0):
-            for metric in cc_metrics:
-                if (isinstance(metric, Function)):
-                    # is methode metrics
-                    if (metric.is_method):
-                        self.calcul_nom = self.calcul_nom + 1
-                        self.method_loc.append(metric.endline - metric.lineno)
-                    # is function metrics
-                    else:
-                        self.calcul_nof = self.calcul_nof + 1
-                        self.func_loc.append(metric.endline - metric.lineno)
-                        self.cc.append(metric.complexity)
-                # is class metrics
-                elif (isinstance(metric, Class)):
-                    self.calcul_noc = self.calcul_noc + 1
-                    self.class_loc.append(metric.endline - metric.lineno)
-                    # calcule methodes metrics
-                    self.__calcule_cc_metrics(metric.methods)
-                    # calcule inner class metrics
-                    self.__calcule_cc_metrics(metric.inner_classes)
-                    self.cc.append(metric.real_complexity)
+        for metric in cc_metrics:
+            if (isinstance(metric, Function)):
+                # is methode metrics
+                if (metric.is_method):
+                    self.calcul_nom = self.calcul_nom + 1
+                    self.method_loc.append(metric.endline - metric.lineno)
+                # is function metrics
                 else:
-                    raise TypeError("Unsupported RADON type")
+                    self.calcul_nof = self.calcul_nof + 1
+                    self.func_loc.append(metric.endline - metric.lineno)
+                    self.cc.append(metric.complexity)
+            # is class metrics
+            elif (isinstance(metric, Class)):
+                self.calcul_noc = self.calcul_noc + 1
+                self.class_loc.append(metric.endline - metric.lineno)
+                # calcule methodes metrics
+                self.__calcule_cc_metrics(metric.methods)
+                # calcule inner class metrics
+                self.__calcule_cc_metrics(metric.inner_classes)
+                self.cc.append(metric.real_complexity)
+            else:
+                raise TypeError("Unsupported RADON type")
 
     def __compute_raw_metrics(self, raw_metrics: Module) -> None:
         """
@@ -243,33 +218,33 @@ class RadonConnector:
             None
         """
         metric.radon_cc_total = sum(self.cc)
-        metric.radon_cc_avg = Math.get_no_crash_mean(self.cc)
+        metric.radon_cc_avg = Math.get_mean_safe(self.cc)
         metric.radon_loc_total = sum(self.loc)
-        metric.radon_loc_avg = Math.get_no_crash_mean(self.loc)
+        metric.radon_loc_avg = Math.get_mean_safe(self.loc)
         metric.radon_lloc_total = sum(self.lloc)
-        metric.radon_lloc_avg = Math.get_no_crash_mean(self.lloc)
+        metric.radon_lloc_avg = Math.get_mean_safe(self.lloc)
         metric.radon_sloc_total = sum(self.sloc)
-        metric.radon_sloc_avg = Math.get_no_crash_mean(self.sloc)
+        metric.radon_sloc_avg = Math.get_mean_safe(self.sloc)
         metric.radon_comments_total = sum(self.comments)
-        metric.radon_comments_avg = Math.get_no_crash_mean(self.comments)
+        metric.radon_comments_avg = Math.get_mean_safe(self.comments)
         metric.radon_docstring_total = sum(self.docstring)
-        metric.radon_docstring_avg = Math.get_no_crash_mean(self.docstring)
+        metric.radon_docstring_avg = Math.get_mean_safe(self.docstring)
         metric.radon_blank_total = sum(self.blank)
-        metric.radon_blank_avg = Math.get_no_crash_mean(self.blank)
+        metric.radon_blank_avg = Math.get_mean_safe(self.blank)
         metric.radon_single_comments_total = sum(self.single_comment)
-        metric.radon_single_comments_avg = Math.get_no_crash_mean(self.single_comment)
+        metric.radon_single_comments_avg = Math.get_mean_safe(self.single_comment)
         metric.radon_noc_total = sum(self.noc)
-        metric.radon_noc_avg = Math.get_no_crash_mean(self.noc)
+        metric.radon_noc_avg = Math.get_mean_safe(self.noc)
         metric.radon_nom_total = sum(self.nom)
-        metric.radon_nom_avg = Math.get_no_crash_mean(self.nom)
+        metric.radon_nom_avg = Math.get_mean_safe(self.nom)
         metric.radon_nof_total = sum(self.nof)
-        metric.radon_nof_avg = Math.get_no_crash_mean(self.nof)
+        metric.radon_nof_avg = Math.get_mean_safe(self.nof)
         metric.radon_class_loc_total = sum(self.class_loc)
-        metric.radon_class_loc_avg = Math.get_no_crash_mean(self.class_loc)
+        metric.radon_class_loc_avg = Math.get_mean_safe(self.class_loc)
         metric.radon_method_loc_total = sum(self.method_loc)
-        metric.radon_method_loc_avg = Math.get_no_crash_mean(self.method_loc)
+        metric.radon_method_loc_avg = Math.get_mean_safe(self.method_loc)
         metric.radon_func_loc_total = sum(self.func_loc)
-        metric.radon_func_loc_avg = Math.get_no_crash_mean(self.func_loc)
+        metric.radon_func_loc_avg = Math.get_mean_safe(self.func_loc)
         
         # Save metrics values into the database
         self.session.add(metric)
