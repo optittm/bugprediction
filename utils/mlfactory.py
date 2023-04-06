@@ -8,10 +8,20 @@ from ml.bugvelocity import BugVelocity
 from ml.codemetrics import CodeMetrics
 from models.model import Model
 from utils.container import Container
+from utils.nullml import NullML
 
 
 class MlFactory:
-
+    @staticmethod
+    @inject
+    def is_model_trained(project_id):
+        try:
+            ml_factory = MlFactory(project_id)
+            return ml_factory.is_model_trained()
+        except Exception as e:
+            print(f"Error while checking if model is trained: {e}")
+            return False
+    
     @staticmethod
     @inject
     def create_training_ml_model(model_name: str,
@@ -39,7 +49,7 @@ class MlFactory:
         else:
             logging.error(f"Unknown ml model: {model_name}")
             sys.exit('Unknown ml model')
-
+    
     @staticmethod
     @inject
     def create_predicting_ml_model(project_id,
@@ -60,6 +70,7 @@ class MlFactory:
                     project_id=project_id
                 )
             )
+            
         elif 'codemetrics' in trained_models:
             logging.info("Using CodeMetrics Model")
             ml_factory_provider.override(
@@ -71,4 +82,9 @@ class MlFactory:
                 )
             )
         else:
-            raise Exception("No trained model found.")
+            ml_factory_provider.override(
+                providers.Factory(NullML,
+                )
+            )
+            logging.warning("No trained model found for the given project.")
+

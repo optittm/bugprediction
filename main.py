@@ -142,6 +142,7 @@ def report(ctx, output, report_name,
            ml_html_exporter_provider = Provide[Container.ml_html_exporter_provider.provider]):
     """Create a basic HTML report"""
     MlFactory.create_predicting_ml_model(project.project_id)
+ 
     exporter = html_exporter_provider(output)
     os.makedirs(output, exist_ok=True)
     if report_name == "churn":
