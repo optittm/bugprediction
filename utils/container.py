@@ -8,7 +8,7 @@ from ml.ml import ml
 from connectors.ck import CkConnector
 from connectors.jpeek import JPeekConnector
 from connectors.legacy import LegacyConnector
-from connectors.pylint import PylintConnector
+from connectors.pylint.pylint import PylintConnector
 from connectors.codemaat import CodeMaatConnector
 from connectors.fileanalyzer import FileAnalyzer
 from connectors.git import GitConnector
