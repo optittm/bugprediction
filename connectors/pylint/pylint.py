@@ -6,7 +6,7 @@ import logging
 from connectors.pylint.custom_ast_checker import CustomAstChecker
 from connectors.pylint.custom_linter import CustomLinter
 from connectors.pylint.custom_reporter import CustomReporter
-from connectors.pylint.cheacker_metrics_model import CheckerData
+from connectors.pylint.checker_data import CheckerData
 
 from models.metric import Metric
 
