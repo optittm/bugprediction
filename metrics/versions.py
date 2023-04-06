@@ -123,12 +123,12 @@ def compute_version_metrics(session, repo_dir:str, project_id:int):
             version.bug_velocity=bug_velo_release
             session.commit()
 
+from sklearn.ensemble import RandomForestRegressor
 @timeit
 def assess_next_release_risk(session, configuration: Configuration, project_id:int):
     """
     Assess the risk of deploying the next release by using 
     weighed metrics from version
-
     Parameters:
     -----------
     - session : Session
@@ -151,59 +151,26 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     logging.debug(metrics_statement)
     df = pd.read_sql(metrics_statement, session.get_bind())
 
-    # TODO : we should Remove outliers in the dataframe
-    # while preserving the "Next Release" row
-    # cols = ['pdays', 'campaign', 'previous'] # The columns you want to search for outliers in
-    # # Calculate quantiles and IQR
-    # Q1 = df[cols].quantile(0.25) # Same as np.percentile but maps (0,1) and not (0,100)
-    # Q3 = df[cols].quantile(0.75)
-    # IQR = Q3 - Q1
-    # # Return a boolean array of the rows with (any) non-outlier column values
-    # condition = ~((df[cols] < (Q1 - 1.5 * IQR)) | (df[cols] > (Q3 + 1.5 * IQR))).any(axis=1)
-    #  ---> or (df['name'] == 'Next Release')
-    # # Filter our dataframe based on condition
-    # filtered_df = df[condition]
+    # Fit a random forest regressor model to predict risk assessment
+    X = df[['bug_velocity', 'changes', 'avg_team_xp', 'lizard_avg_complexity', 'code_churn_avg']]
+    y = df['risk_assessment']
+    rf = RandomForestRegressor(n_estimators=100)
+    rf.fit(X, y)
 
-    bug_velocity = np.array(df['bug_velocity'])
-    bug_velocity = preprocessing.normalize([bug_velocity])
-    changes = np.array(df['changes'])
-    changes = preprocessing.normalize([changes])
-    avg_team_xp = np.array(df['avg_team_xp'])
-    avg_team_xp = preprocessing.normalize([avg_team_xp])
-    lizard_avg_complexity = np.array(df['lizard_avg_complexity'])
-    lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
-    code_churn_avg = np.array(df['code_churn_avg'])
-    code_churn_avg = preprocessing.normalize([code_churn_avg])
-
-    scaled_df = pd.DataFrame({
-        'bug_velocity': bug_velocity[0],
-        'changes': changes[0],
-        'avg_team_xp': avg_team_xp[0],
-        'lizard_avg_complexity': lizard_avg_complexity[0],
-        'code_churn_avg': code_churn_avg[0]
-        })
-
-    old_cols = df[["name", "bugs"]]
-    scaled_df = scaled_df.join(old_cols)
-
-    # Set XP to 1 day for all versions that are too short (avoid inf values in dataframe)
-    scaled_df['avg_team_xp'] = scaled_df['avg_team_xp'].replace({0:1})
-    scaled_df["risk_assessment"] = (
-        (scaled_df["bug_velocity"] * 90) +
-         (scaled_df["changes"] * 20) +
-         ((1 / scaled_df["avg_team_xp"]) * 0.008) +
-         (scaled_df["lizard_avg_complexity"] * 40) +
-         (scaled_df["code_churn_avg"] * 20)
-    )
+    # Get feature importances from the random forest model
+    feature_importances = rf.feature_importances_
+    print("Feature importances:")
+    for i, feature in enumerate(['bug_velocity', 'changes', 'avg_team_xp', 'lizard_avg_complexity', 'code_churn_avg']):
+        print(f"{feature}: {feature_importances[i]}")
 
     # Return risk assessment along with median and max risk scores for all versions
-    median_risk = scaled_df["risk_assessment"].median()
-    max_risk = scaled_df["risk_assessment"].max()
-    risk_score = scaled_df.loc[(scaled_df["name"] == configuration.next_version_name)]
+    median_risk = df["risk_assessment"].median()
+    max_risk = df["risk_assessment"].max()
+    risk_score = df.loc[(df["name"] == configuration.next_version_name)]
     return {
         "median": math.ceil(median_risk),
         "max": math.ceil(max_risk),
-        "score": math.ceil(risk_score.iloc[0]['risk_assessment'])}
+        "score": math.ceil(rf.predict(risk_score[['bug_velocity', 'changes', 'avg_team_xp', 'lizard_avg_complexity', 'code_churn_avg']])[0])}
 
 @timeit
 def compute_bugvelocity_last_30_days(session, project_id:int)->pd.DataFrame:
