@@ -2,7 +2,7 @@ import astroid
 from astroid.exceptions import InferenceError
 from pylint.checkers import BaseChecker
 from connectors.pylint.custom_linter import CustomLinter
-from utils.math import get_mean_safe
+from utils.math import Math
 
 class CustomAstChecker(BaseChecker):
     # These properties have to be defined for the 
@@ -153,8 +153,8 @@ class CustomAstChecker(BaseChecker):
     def close(self) -> None:
         lcc_values = {}
         self.data.num_import = len(self.import_list)
-        self.data.fan_out = get_mean_safe([method["fan_out"] for method in self.method_data.values()])
-        self.data.cbo = get_mean_safe([len(v) for v in self.class_depedency.values()])
+        self.data.fan_out = Math.get_rounded_mean_safe([method["fan_out"] for method in self.method_data.values()])
+        self.data.cbo = Math.get_rounded_mean_safe([len(v) for v in self.class_depedency.values()])
         for class_name in self.class_method_defs:
             called_methods = self.class_method_calls[class_name]
             defined_methods = self.class_method_defs[class_name]
@@ -162,7 +162,7 @@ class CustomAstChecker(BaseChecker):
                 lcc_values[class_name] = 0.0
             else:
                 lcc_values[class_name] = 1.0 - (len(called_methods) / len(defined_methods))
-        self.data.lcc = get_mean_safe(lcc_values.values())
+        self.data.lcc = Math.get_rounded_mean_safe(lcc_values.values())
 
     def count_docstring(self, node: astroid) -> None:
         if (node.doc):

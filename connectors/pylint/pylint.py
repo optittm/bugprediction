@@ -32,27 +32,6 @@ class PylintConnector:
         self.session = session
         self.config = config
 
-        # Metrics
-        self.score = 0
-        self.code = 0
-        self.code_avg = 0
-        self.docstring = 0
-        self.docstring_avg = 0
-        self.comment = 0
-        self.comment_avg = 0
-        self.blank = 0
-        self.blank_avg = 0
-        self.nmodule = 0
-        self.noc = 0
-        self.nom = 0
-        self.nof = 0
-        self.dup_line = 0
-        self.num_msg = 0
-        self.module_comment_avg = 0
-        self.class_comment_avg = 0
-        self.methode_comment_avg = 0
-        self.function_comment_avg = 0
-
     def analyze_source_code(self) -> None:
         """
         Analyzes the source code of the repository using PyLint to calculate code quality metrics.
@@ -72,7 +51,7 @@ class PylintConnector:
         if (self.config.language.lower() != "python"):
             logging.info('PyLint is only used for Python language')
         else:
-            if (not metric.pylint_score):
+            if (not metric.pylint_cbo):
                 self.compute_metrics(metric)
             else:
                 logging.info('PyLint analysis already done for this version, version: ' + str(self.version.version_id))
