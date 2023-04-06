@@ -2,6 +2,7 @@ from dependency_injector import containers, providers
 from configuration import Configuration
 from dotenv import load_dotenv
 from sqlalchemy.orm import sessionmaker
+from connectors.radon import RadonConnector
 from exporters.ml_reports import MlHtmlExporter
 
 from ml.ml import ml
@@ -13,9 +14,11 @@ from connectors.codemaat import CodeMaatConnector
 from connectors.fileanalyzer import FileAnalyzer
 from connectors.git import GitConnector
 from connectors.jira import JiraConnector
+from connectors.glpi import GlpiConnector
 from importers.flatfile import FlatFileImporter
 from exporters.html import HtmlExporter
 from exporters.flatfile import FlatFileExporter
+from connectors.pdepend import PDependConnector
 
 class Container(containers.DeclarativeContainer):
     load_dotenv()
@@ -48,6 +51,12 @@ class Container(containers.DeclarativeContainer):
         session = session,
         config = configuration
     )
+    
+    radon_connector_provider = providers.Factory(
+        RadonConnector,
+        session = session,
+        config = configuration
+    )
 
     pylint_connector_provider = providers.Factory(
         PylintConnector,
@@ -69,6 +78,12 @@ class Container(containers.DeclarativeContainer):
     jira_connector_provider = providers.Factory(
         JiraConnector,
         session = session,  
+        config = configuration
+    )
+
+    glpi_connector_provider = providers.Factory(
+        GlpiConnector,
+        session = session,
         config = configuration
     )
 
@@ -95,6 +110,12 @@ class Container(containers.DeclarativeContainer):
 
     flat_file_exporter_provider = providers.Singleton(
         FlatFileExporter,
+        session = session,
+        config = configuration
+    )
+
+    pdepend_connector_provider = providers.Factory(
+        PDependConnector,
         session = session,
         config = configuration
     )
