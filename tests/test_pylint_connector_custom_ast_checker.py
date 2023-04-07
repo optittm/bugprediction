@@ -330,6 +330,39 @@ class TestPylintConnector(unittest.TestCase):
         self.custom_ast_checker.close()
         # then
         self.assertEqual(self.custom_ast_checker.data.lcc, 0.25)
+
+    def test_compute_class_dit_with_simple_class(self):
+        # Define a simple class without inheritance
+        node = astroid.parse("""
+            class MyClass:    
+                pass
+        """).body[0]
+        dit = self.custom_ast_checker._CustomAstChecker__compute_class_dit(node)
+        self.assertEqual(dit, 1)
+
+    def test_compute_class_dit_with_single_level_inheritance(self):
+        # Define a class inheriting from a simple class
+        node = astroid.parse("""
+            class Parent:
+                pass
+            class Child(Parent):
+                pass
+        """).body[1]
+        dit = self.custom_ast_checker._CustomAstChecker__compute_class_dit(node)
+        self.assertEqual(dit, 2)
+
+    def test_compute_class_dit_with_multi_level_inheritance(self):
+        # Define a class inheriting from a class inheriting from a simple class
+        node = astroid.parse("""
+            class Grandparent:
+                pass
+            class Parent(Grandparent):
+                pass
+            class Child(Parent):
+                pass
+        """).body[2]
+        dit = self.checker_data._CheckerData__compute_class_dit(node)
+        self.assertEqual(dit, 3)
     
     
     
