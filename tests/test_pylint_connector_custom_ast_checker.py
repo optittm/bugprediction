@@ -356,12 +356,14 @@ class TestPylintConnector(unittest.TestCase):
         node = astroid.parse("""
             class Grandparent:
                 pass
+            class NoHerit:
+                pass
             class Parent(Grandparent):
                 pass
-            class Child(Parent):
+            class Child(NoHerit, Parent):
                 pass
         """).body[2]
-        dit = self.checker_data._CheckerData__compute_class_dit(node)
+        dit = self.custom_ast_checker._CustomAstChecker__compute_class_dit(node)
         self.assertEqual(dit, 3)
     
     
