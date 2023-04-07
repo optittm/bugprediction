@@ -370,7 +370,7 @@ class CustomAstChecker(BaseChecker):
         Returns:
         None
         """
-        if (node.doc):
+        if node.doc_node:
             self.data.num_docstring += 1
 
     # Compute the DIT for a simple class

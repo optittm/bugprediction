@@ -44,14 +44,13 @@ class PylintConnector:
         """
         logging.info('PyLint::analyze_repo')
         metric = self.session.query(Metric).filter(Metric.version_id == self.version.version_id).first()
-        if (not metric):
+        if not metric:
             metric = Metric()
         
-        # TODO it will maybe need to be updated
-        if (self.config.language.lower() != "python"):
+        if self.config.language.lower() != "python":
             logging.info('PyLint is only used for Python language')
         else:
-            if (not metric.pylint_cbo):
+            if not metric.pylint_cbo:
                 self.compute_metrics(metric)
             else:
                 logging.info('PyLint analysis already done for this version, version: ' + str(self.version.version_id))
