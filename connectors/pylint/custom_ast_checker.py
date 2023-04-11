@@ -57,10 +57,10 @@ class CustomAstChecker(BaseChecker):
 
         self.data.noc += 1
 
-        # count number of inner class
-        for inner_node in node.body:
-            if isinstance(inner_node, astroid.ClassDef):
-                self.data.num_inner_cls_and_lambda += 1
+        # Check if this node is a inner class
+        context = node.frame()
+        if not isinstance(context.parent, astroid.Module):
+            self.data.num_inner_cls_and_lambda += 1
         
         # count number of field
         for child_node in node.get_children():
@@ -84,11 +84,10 @@ class CustomAstChecker(BaseChecker):
 
         # Compute data for lcc
         self.class_method_defs[node.name] = set()
-        for method in node.methods():
-            method_name = node.name + "." + method.name
-            self.class_method_defs[node.name].add(method_name)
-        if node.name not in self.class_method_calls:
-            self.class_method_calls[node.name] = set()
+        for body in node.body:
+            if isinstance(body, astroid.FunctionDef):
+                method_name = node.name + "." + body.name
+                self.class_method_defs[node.name].add(method_name)
 
     # Methode call on function def visit
     def visit_functiondef(self, node: astroid.FunctionDef) -> None:
@@ -386,21 +385,17 @@ class CustomAstChecker(BaseChecker):
         Returns:
         An integer representing the DIT value for the given class node.
         """
-        local_dit = 1
-        # if this class is a leaf return 1
-        if len(node.bases) < 0:
-            return 1
-        # else compute de dit for each inerit class
+        local_dit = 0
+        # Compute de dit for each inerit class
         # converte Name nodes to ClassDef nodes
-        # We need to interprete the bases names to get the class
+        # We need to interprete the bases names to get the class def node
         bases_klass_nodes = [next(nodes.infer()) for nodes in node.bases]
-        # This condition is for the case "class A(None)"
-        if isinstance(bases_klass_nodes, astroid.ClassDef):
-            for klass in bases_klass_nodes:
+        for klass in bases_klass_nodes:
+            # This condition is for the case "class A(None)"
+            if isinstance(klass, astroid.ClassDef):
                 klass_dit = self.__compute_class_dit(klass)
                 # The DIT of the class is the max DIT of each inerit class
-                # The class DIT is the inerit class dit + 1
-                if klass_dit + 1 > local_dit :
-                    local_dit = klass_dit + 1
-        
-        return local_dit
+                if klass_dit > local_dit :
+                    local_dit = klass_dit
+        # The class DIT is the inerit class dit + 1
+        return local_dit + 1
