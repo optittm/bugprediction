@@ -88,6 +88,8 @@ class CustomAstChecker(BaseChecker):
             if isinstance(body, astroid.FunctionDef):
                 method_name = node.name + "." + body.name
                 self.class_method_defs[node.name].add(method_name)
+        if node.name not in self.class_method_calls:
+            self.class_method_calls[node.name] = set()
 
     # Methode call on function def visit
     def visit_functiondef(self, node: astroid.FunctionDef) -> None:
