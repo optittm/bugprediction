@@ -48,7 +48,8 @@ class PylintConnector:
             metric = Metric()
         
         if self.config.language.lower() != "python":
-            logging.info('PyLint is only used for Python language')
+            logging.error('PyLint is only used for Python language')
+            raise Exception("PyLint can only analyze Python code")
         else:
             if not metric.pylint_cbo:
                 self.compute_metrics(metric)

@@ -21,7 +21,7 @@ class CustomAstChecker(BaseChecker):
         class_method_calls (dict): A dictionary containing the call information of each method in a class.
     """
 
-    # These properties have to be defined for the 
+    # These properties have to be defined
     # or the linter fink is a malformed checker
     name = 'class-visitor'
     priority = -1
@@ -38,7 +38,7 @@ class CustomAstChecker(BaseChecker):
         super().__init__(linter)
         self.data = linter.metrics
     
-    # Methode call on class def visit
+    # Method call on class def visit
     def visit_classdef(self, node : astroid.ClassDef) -> None:
         """
         Visits a ClassDef node and updates various metrics related to the class. 
@@ -75,9 +75,9 @@ class CustomAstChecker(BaseChecker):
 
         # Prepare the cbo
         self.class_depedency[node.name] = set()
-        # Increase the cbo with the inerit class
+        # Increase the cbo with the inherit class
         if len(node.bases):
-            # the direct inerit class
+            # the direct inherit class
             bases_klass_nodes = [next(nodes.infer()) for nodes in node.bases]
             for klass in bases_klass_nodes:
                 self.class_depedency[node.name].add(klass.name)
@@ -91,7 +91,7 @@ class CustomAstChecker(BaseChecker):
         if node.name not in self.class_method_calls:
             self.class_method_calls[node.name] = set()
 
-    # Methode call on function def visit
+    # Method call on function def visit
     def visit_functiondef(self, node: astroid.FunctionDef) -> None:
         """
         The `visit_functiondef` method is called when visiting a function definition node in the AST. 
@@ -105,7 +105,7 @@ class CustomAstChecker(BaseChecker):
             None
         """
         self.count_docstring(node)
-        # is methode
+        # is method
         if node.is_method():
             self.visit_methoddef(node)
         # is function
@@ -295,11 +295,11 @@ class CustomAstChecker(BaseChecker):
         Returns:
         None
         """
-        # retrive the context
+        # retrieve the context
         context = node.frame()
         # check if the context is in the method
         if isinstance(context, astroid.FunctionDef) and context.is_method():
-            # Retrive the class of the context method
+            # Retrieve the class of the context method
             context_class = context.parent
             context_name = f"{context_class.name}.{context.name}"
 
@@ -317,9 +317,13 @@ class CustomAstChecker(BaseChecker):
                     self.class_method_calls[called_method_class.name] = set()
                 self.class_method_calls[called_method_class.name].add(node.func.attrname)
             except InferenceError:
+                # InferenceError apear in two case
+                # - the node.func.expr is a non method FunctionDef call
+                # - the node.func.expr is a SubScript node (a sequence)
+                # This 2 case are not used in for the lcc
                 pass
 
-    # methode call on module visit
+    # method call on module visit
     def visit_module(self, node: astroid.Module) -> None:
         """
         The visit_module method is called when visiting a module node in the AST. 
@@ -333,7 +337,7 @@ class CustomAstChecker(BaseChecker):
         """
         self.count_docstring(node)
     
-    # methode call when the visit is complete
+    # method call when the visit is complete
     def close(self) -> None:
         """
         The close method is called when the visit to the AST is complete. 
@@ -388,16 +392,16 @@ class CustomAstChecker(BaseChecker):
         An integer representing the DIT value for the given class node.
         """
         local_dit = 0
-        # Compute de dit for each inerit class
-        # converte Name nodes to ClassDef nodes
-        # We need to interprete the bases names to get the class def node
+        # Compute the dit for each inherit class
+        # convert Name nodes to ClassDef nodes
+        # We need to interpret the bases names to get the class def node
         bases_klass_nodes = [next(nodes.infer()) for nodes in node.bases]
         for klass in bases_klass_nodes:
             # This condition is for the case "class A(None)"
             if isinstance(klass, astroid.ClassDef):
                 klass_dit = self.__compute_class_dit(klass)
-                # The DIT of the class is the max DIT of each inerit class
+                # The DIT of the class is the max DIT of each inherit class
                 if klass_dit > local_dit :
                     local_dit = klass_dit
-        # The class DIT is the inerit class dit + 1
+        # The class DIT is the inherit class dit + 1
         return local_dit + 1

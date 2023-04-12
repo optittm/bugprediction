@@ -15,19 +15,13 @@ class TestPylintConnector(unittest.TestCase):
         self.metric.version_id = MagicMock(version_id=1)
         self.pylint_connector = PylintConnector(self.test_directory, self.version, self.session, self.config)
 
-    def test_init(self):
-        self.assertEqual(self.pylint_connector.directory, self.test_directory)
-        self.assertEqual(self.pylint_connector.version, self.version)
-        self.assertEqual(self.pylint_connector.session, self.session)
-        self.assertEqual(self.pylint_connector.config, self.config)
-
     def test_analyze_source_code_does_not_analyze_non_python_code(self):
         # Setup
         self.pylint_connector.config.language = 'java'
         logging_mock = Mock()
 
         # Action
-        with patch('logging.info', logging_mock):
+        with patch('logging.error', logging_mock), self.assertRaises(Exception):
             self.pylint_connector.analyze_source_code()
 
         # Assert

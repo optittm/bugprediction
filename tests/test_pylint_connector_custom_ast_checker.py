@@ -59,7 +59,6 @@ class TestPylintConnector(unittest.TestCase):
         self.custom_ast_checker.visit_classdef(node)
         self.assertEqual(self.custom_ast_checker.data.num_field, 2)
 
-    # TODO Correct the dit
     def test_visit_classdef_computes_dit(self):
         node1 = astroid.parse('''
             class A:
@@ -72,7 +71,6 @@ class TestPylintConnector(unittest.TestCase):
         self.custom_ast_checker.visit_classdef(node1)
         self.assertEqual(self.custom_ast_checker.data.dit, 2)
 
-    # TODO Correcte cbo
     def test_visit_classdef_prepares_cbo(self):
         node = astroid.parse('''
             class A:
@@ -84,7 +82,6 @@ class TestPylintConnector(unittest.TestCase):
         self.custom_ast_checker.visit_classdef(node.body[1])
         self.assertDictEqual(self.custom_ast_checker.class_depedency, {'A': set(), 'B': {'A'}})
 
-    # TODO Correct error
     def test_visit_classdef_computes_lcc(self):
         node = astroid.parse('''
             class MyClass:
@@ -95,7 +92,7 @@ class TestPylintConnector(unittest.TestCase):
         ''').body[0]
         self.custom_ast_checker.visit_classdef(node)
         self.assertDictEqual(self.custom_ast_checker.class_method_defs, {'MyClass': {'MyClass.method1', 'MyClass.method2'}})
-        self.assertDictEqual(self.custom_ast_checker.class_method_calls, {})
+        self.assertDictEqual(self.custom_ast_checker.class_method_calls, {'MyClass': set()})
 
     def test_visit_functiondef_count_nof(self):
         # create a mock FunctionDef node
