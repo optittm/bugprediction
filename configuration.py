@@ -22,7 +22,7 @@ class Configuration:
         
         self.scm_path  = self.__get_executable("OTTM_SCM_PATH")
         self.java_path = self.__get_executable("OTTM_JAVA_PATH")
-        self.php_path = self.__get_executable("OTTM_PHP_PATH")
+        #self.php_path = self.__get_executable("OTTM_PHP_PATH")
         
         self.target_database = self.__get_required_value("OTTM_TARGET_DATABASE")
 
