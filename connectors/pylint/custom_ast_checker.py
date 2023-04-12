@@ -317,10 +317,10 @@ class CustomAstChecker(BaseChecker):
                     self.class_method_calls[called_method_class.name] = set()
                 self.class_method_calls[called_method_class.name].add(node.func.attrname)
             except InferenceError:
-                # InferenceError apear in two case
-                # - the node.func.expr is a non method FunctionDef call
+                # InferenceError can appear in two cases:
+                # - the node.func.expr is a non-method FunctionDef call
                 # - the node.func.expr is a SubScript node (a sequence)
-                # This 2 case are not used in for the lcc
+                # These two cases are not used for the lcc.
                 pass
 
     # method call on module visit
