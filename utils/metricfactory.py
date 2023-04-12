@@ -56,6 +56,13 @@ class MetricFactory:
                                     Metric.radon_nof_avg, Metric.radon_class_loc_total, Metric.radon_class_loc_avg,
                                     Metric.radon_method_loc_total, Metric.radon_method_loc_avg, Metric.radon_func_loc_total,
                                     Metric.radon_func_loc_avg)
+        pylint_metrics_query = session.query(Metric.pylint_cbo, Metric.pylint_fan_out, Metric.pylint_dit,
+                                    Metric.pylint_noc, Metric.pylint_nom, Metric.pylint_nof,
+                                    Metric.pylint_num_field, Metric.pylint_num_returns, Metric.pylint_num_loops,
+                                    Metric.pylint_num_comparisons, Metric.pylint_num_try_except, Metric.pylint_num_str_literals,
+                                    Metric.pylint_num_numbers, Metric.pylint_num_math_op, Metric.pylint_num_variable,
+                                    Metric.pylint_num_inner_cls_and_lambda, Metric.pylint_num_docstring, Metric.pylint_num_import,
+                                    Metric.pylint_lcc)
 
         if str(language).lower() == "java":
             logging.info('Language Java')
@@ -84,7 +91,8 @@ class MetricFactory:
         elif str(language).lower() == "python":
             logging.info('Language Python')
             return session.query(lizard_metrics_query.subquery(),
-                                 radon_metrics_query.subquery()). \
+                                 radon_metrics_query.subquery(),
+                                 pylint_metrics_query.subquery()). \
                 order_by(Version.end_date.desc()). \
                 filter(Version.project_id == project_id). \
                 filter(Version.include_filter(config.include_versions)). \

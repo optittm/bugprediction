@@ -11,7 +11,7 @@ from ml.ml import ml
 from utils.timeit import timeit
 from xgboost import XGBRegressor
 
-from utils.metrics import MetricFactory
+from utils.metricfactory import MetricFactory
 
 
 class CodeMetrics(ml):
