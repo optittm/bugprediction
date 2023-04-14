@@ -88,6 +88,9 @@ class GitConnector(ABC):
                     dmm_unit_complexity = git_commit.dmm_unit_complexity
                     dmm_unit_interfacing = git_commit.dmm_unit_interfacing
                 except ValueError:
+                    logging.warning(
+                        f"Cannot compute DMM metrics for commit {git_commit.hash}, skipping. Issue is probably from a submodule commit"
+                    )
                     dmm_unit_size = None
                     dmm_unit_complexity = None
                     dmm_unit_interfacing = None
