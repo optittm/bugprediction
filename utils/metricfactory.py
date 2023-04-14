@@ -1,7 +1,4 @@
 import logging
-import sys
-
-from dependency_injector import providers
 from dependency_injector.wiring import Provide, inject
 from sqlalchemy.orm import Query
 
