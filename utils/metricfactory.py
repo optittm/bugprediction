@@ -224,4 +224,4 @@ class MetricFactory:
 
         else:
             logging.error(f"Unsupported Language: {language}")
-            sys.exit("Unsupported Language")
+            raise Exception(f"Unsupported Language: {language}")
