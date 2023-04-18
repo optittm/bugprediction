@@ -23,7 +23,7 @@ class CodeMetrics(ml):
     def train(self):
         """Train the model"""
 
-        versions_metrics_statement = MetricFactory.predict_bugs_language(project_id=self.project_id).statement
+        versions_metrics_statement = MetricFactory.get_metrics_query(self.project_id, "train").statement
 
         dataframe = pd.read_sql(versions_metrics_statement, self.session.get_bind())
         dataframe = dataframe.dropna(axis=1, how='any')
@@ -54,7 +54,7 @@ class CodeMetrics(ml):
         """Predict the next value"""
         logging.info("CodeMetrics::predict")
         self.restore()  # unpickle the model
-        versions_metrics_statement = self.metrics_query.statement
+        versions_metrics_statement = MetricFactory.get_metrics_query(self.project_id, "predict").statement
 
         dataframe = pd.read_sql(versions_metrics_statement, self.session.get_bind())
         dataframe = dataframe.iloc[0]
