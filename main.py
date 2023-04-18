@@ -9,6 +9,7 @@ import tempfile
 from xmlrpc.client import boolean
 
 import click
+import semver
 import sqlalchemy as db
 from sqlalchemy.exc import ArgumentError
 from dependency_injector.wiring import Provide, inject
@@ -31,6 +32,7 @@ from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
 from utils.dirs import TmpDirCopyFilteredWithEnv
 from utils.gitfactory import GitConnectorFactory
+from utils.restric_folder import RestrictFolder
 
 def lint_aliases(raw_aliases) -> boolean:
     try:
@@ -298,14 +300,16 @@ def populate(ctx, skip_versions,
 
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
+    print("---------ICI------------", configuration.include_folders)
+    restrict_folder = RestrictFolder(versions, configuration)
     for version in versions:
         process = subprocess.run([configuration.scm_path, "checkout", version.tag],
                                 stdout=subprocess.PIPE,
                                 cwd=repo_dir)
         logging.info('Executed command line: ' + ' '.join(process.args))
 
-        with TmpDirCopyFilteredWithEnv(repo_dir, configuration.include_folders, 
-                                       configuration.exclude_folders) as tmp_work_dir:
+        with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version.tag), 
+                                       restrict_folder.get_exclude_folders(version.tag)) as tmp_work_dir:
 
             legacy = legacy_connector_provider(project.project_id, repo_dir, version)
             legacy.get_legacy_files(version)

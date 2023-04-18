@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import logging
@@ -131,7 +132,12 @@ class Configuration:
     def __get_path_list(env_var) -> List[str]:
         path_list = []
         if env_var in os.environ and os.environ[env_var]:
-            path_list = os.environ[env_var].split(";")
+            try:
+                path_list = json.loads(os.environ[env_var])
+                print("json", path_list)
+            except ValueError:
+                path_list = os.environ[env_var].split(";")
+                print("list", path_list)
         return path_list
 
     @staticmethod
