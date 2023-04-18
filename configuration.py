@@ -23,10 +23,8 @@ class Configuration:
         self.language = os.getenv("OTTM_LANGUAGE", "")
 
         self.scm_path  = self.__get_executable("OTTM_SCM_PATH")
-        if self.language.lower() == "java":
-            self.java_path = self.__get_executable("OTTM_JAVA_PATH")
-        elif self.language.lower() == "php":
-            self.php_path = self.__get_executable("OTTM_PHP_PATH")
+        self.java_path = self.__get_executable("OTTM_JAVA_PATH")
+        self.php_path = self.__get_executable("OTTM_PHP_PATH")
         
         self.target_database = self.__get_required_value("OTTM_TARGET_DATABASE")
 
