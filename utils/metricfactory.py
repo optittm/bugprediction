@@ -1,12 +1,10 @@
 import logging
-
 from dependency_injector import providers
 from dependency_injector.wiring import Provide, inject
+from metrics.metric_php import MetricPhp
+from metrics.metric_python import MetricPython
 
-from ml.bugvelocity import BugVelocity
-from ml.codemetrics import CodeMetrics
-from models.metric_java import MetricJava
-from models.model import Model
+from metrics.metric_java import MetricJava
 from utils.container import Container
 
 
@@ -18,7 +16,7 @@ class MetricFactory:
                         config = Provide[Container.configuration],
                         metric_factory_provider = Provide[Container.metric_factory_provider.provider]) -> None:
         if config.language.lower() == "java":
-            # logging.info("Using BugVelocity Model")
+            logging.info("Fetching Java metrics")
             metric_factory_provider.override(
                 providers.Factory(
                     MetricJava,
@@ -26,15 +24,24 @@ class MetricFactory:
                     config = config
                 )
             )
-        elif model_name == "codemetrics":
-            logging.info("Using CodeMetrics Model")
-            ml_factory_provider.override(
+        elif config.language.lower() == "php":
+            logging.info("Fetching PHP metrics")
+            metric_factory_provider.override(
                 providers.Factory(
-                    CodeMetrics,
+                    MetricPhp,
+                    session = session,
+                    config = config
+                )
+            )
+        elif config.language.lower() == "python":
+            logging.info("Fetching Python metrics")
+            metric_factory_provider.override(
+                providers.Factory(
+                    MetricPython,
                     session = session,
                     config = config
                 )
             )
         else:
-            logging.error(f"Unknown ml model: {model_name}")
-            raise Exception('Unknown ml model')
+            logging.error(f"Unsupported language: {config.language}")
+            raise Exception('Unsupported language')

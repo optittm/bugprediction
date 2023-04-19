@@ -19,7 +19,7 @@ from importers.flatfile import FlatFileImporter
 from exporters.html import HtmlExporter
 from exporters.flatfile import FlatFileExporter
 from connectors.pdepend import PDependConnector
-from models.metric_common import MetricCommon
+from metrics.metric_common import MetricCommon
 
 class Container(containers.DeclarativeContainer):
     load_dotenv()
