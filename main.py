@@ -308,8 +308,8 @@ def populate(ctx, skip_versions,
                                 cwd=repo_dir)
         logging.info('Executed command line: ' + ' '.join(process.args))
 
-        with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version.tag), 
-                                       restrict_folder.get_exclude_folders(version.tag)) as tmp_work_dir:
+        with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version), 
+                                       restrict_folder.get_exclude_folders(version)) as tmp_work_dir:
 
             legacy = legacy_connector_provider(project.project_id, repo_dir, version)
             legacy.get_legacy_files(version)
