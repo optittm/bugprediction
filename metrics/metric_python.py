@@ -37,7 +37,7 @@ class MetricPython(MetricCommon):
                                 Metric.radon_nom_total, Metric.radon_nom_avg, Metric.radon_nof_total,
                                 Metric.radon_nof_avg, Metric.radon_class_loc_total, Metric.radon_class_loc_avg,
                                 Metric.radon_method_loc_total, Metric.radon_method_loc_avg, Metric.radon_func_loc_total,
-                                Metric.radon_func_loc_avg)
+                                Metric.radon_func_loc_avg, Metric.radon_wmc_total, Metric.radon_wmc_avg)
     
     def _get_pylint_metrics_query(self) -> Query:
         return self.session.query(Metric.version_id, Metric.pylint_cbo, Metric.pylint_fan_out, Metric.pylint_dit,
