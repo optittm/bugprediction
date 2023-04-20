@@ -13,6 +13,17 @@ For each release the tool will:
 
 ## Usage
 
+### Prerequisites
+
+- A project in Java or PHP
+- Source code on GitHub or GitLab
+- Project releases and issues on GitHub, GitLab, Jira or other
+- To analyse a Java project, have Java >= 8 installed
+- To analyse a PHP project, have PHP >= 5.3.7 installed  
+    * On Linux: have both packages php-cli and php-xml
+
+### Setup and use
+
 The tool needs to target a repository (e.g. GitHub, GitLab) with releases and issues. If you use another tool, you'd need to import releases and issues into the database.
 
 You need to run this commnand to install all the dependencies :
@@ -20,16 +31,21 @@ You need to run this commnand to install all the dependencies :
     pip install -r requirements.txt
 
 
-For testing, you can use either the DBeaver project or the much lighter (less time to load) fx2048 project.
-Or you can look for any opensource Java project with releases and issues.
+For testing, you can use either the DBeaver project or the much lighter (less time to load) fx2048 project.  
+Or you can look for any opensource Java, PHP or Python project with releases and issues.  
+Examples are:
+- https://github.com/dbeaver/dbeaver (heavy Java project)
+- https://github.com/brunoborges/fx2048 (lighter Java project)
+- https://github.com/php-pm/php-pm (PHP project)
+- https://github.com/google/python-fire (Python project)
 
 You need to create a file in the project directory called ```.env```, you should copy the ```.env-example``` file and fill it with at least these variables (see the [documentation of populate command](./docs/commands.md) for) :
 
  - ```OTTM_SCM_PATH``` : Path to git executable, leave "git" if it's into system env. path
- - ```OTTM_SOURCE_PROJECT``` : Name of the project (e.g. dbeaver or fx2048 or python-fire)
- - ```OTTM_SOURCE_REPO``` : Repositiory name (e.g. dbeaver/dbeaver or brunoborges/fx2048 or google/python-fire)
- - ```OTTM_CURRENT_BRANCH``` :  The branch containing the next release (e.g. devel for dbeaver or master for fx2048 and python-fire)
- - ```OTTM_SOURCE_REPO_URL``` : # The full path to repo (e.g. https://github.com/dbeaver/dbeaver or https://github.com/brunoborges/fx2048 or https://github.com/google/python-fire)
+ - ```OTTM_SOURCE_PROJECT``` : Name of the project (e.g. dbeaver or fx2048)
+ - ```OTTM_SOURCE_REPO``` : Repositiory name (e.g. dbeaver/dbeaver or brunoborges/fx2048)
+ - ```OTTM_CURRENT_BRANCH``` :  The branch containing the next release (e.g. devel for dbeaver or master for fx2048)
+ - ```OTTM_SOURCE_REPO_URL``` : # The full path to repo (e.g. https://github.com/dbeaver/dbeaver)
  - ```OTTM_SOURCE_BUGS``` : Source where we get issues (e.g. git, jira or glpi)
  - ```OTTM_SOURCE_REPO_SCM``` : Either "github" or "gitlab", other SCM are not yet supported
  - ```OTTM_SCM_BASE_URL``` : SCM base URL - leave empty for public repo
@@ -119,6 +135,8 @@ Copy the token and paste it next to ```OTTM_JIRA_TOKEN``` in the .env file.
 
 The tool currently doesn't support repositories with multiple releases in parallel (i.e. a latest version maintained in parallel of a LTS version). You have to [import](./docs/import.md) the branch of versions that you want to examine.
 
+Git's submodules cause issues within PyDriller when traversing commits and calculating metrics. Therefore BugPrediction is just skipping them. If you use submodules, BugPrediction's analysis may be erroneous.
+
 Linking issues and commits to a version is a tedious task. At this stage, the tool roughly estimate that issues and commits are linked to a version if the objects were created between the start and end dates of the version. 
 
 ## Contribute
@@ -137,5 +155,11 @@ The tool is released under a MIT licence. Contributors are welcomed in many area
  - CK: https://github.com/mauricioaniche/ck
  - JPeek: https://github.com/cqfn/jpeek
 
- ### Python
+### PHP
+
+ - PHP Depend (PDepend): https://github.com/pdepend/pdepend
+
+### Python
+ 
  - Radon: [https://pypi.org/project/radon/](https://pypi.org/project/radon/)
+

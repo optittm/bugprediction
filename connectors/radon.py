@@ -86,7 +86,8 @@ class RadonConnector:
         self.nof = []                           
         self.class_loc = []                     
         self.method_loc = []                    
-        self.func_loc = []                  
+        self.func_loc = []         
+        self.wmc=[]         
 
     def analyze_source_code(self) -> None:
         """
@@ -106,7 +107,8 @@ class RadonConnector:
         
         logging.info('RADON self.config.language = ' + self.config.language)
         if (self.config.language.lower() != "python"):
-            logging.info('RADON is only used for Python language')
+            logging.error('Radon is only used for Python language')
+            raise Exception("Radon can only analyze Python code")
         else:
             if (not metric.radon_cc_total):
                 self.compute_metrics()
@@ -137,15 +139,39 @@ class RadonConnector:
             self.avg_cc.append(average_complexity(cc_metrics))
             self.__compute_cc_metrics(cc_metrics)
             self.__get_raw_metrics(raw_metrics)
+            self.__calcule_wmc_metric(cc_metrics)
         logging.info('Adding Radon analysis for this version, version: ' + str(self.version.version_id))
 
 
     def __compute_cc_metrics(self, cc_metrics) -> None:
+        
+        noc, nom, nof = self.__calcule_cc_metrics(cc_metrics)
+        self.noc.append(noc)
+        self.nom.append(nom)
+        self.nof.append(nof)
+        
 
-            noc, nom, nof = self.__calcule_cc_metrics(cc_metrics)
-            self.noc.append(noc)
-            self.nom.append(nom)
-            self.nof.append(nof)
+    def __calcule_wmc_metric(self, cc_metrics) -> None:
+        """
+        Computes the Weighted Methods per Class (WMC) metric using the Radon library.
+
+        Args:
+        - cc_metrics: The Cyclomatic Complexity metrics object returned by the Radon library.
+
+        Returns:
+        - None.
+        """
+
+        for metric in cc_metrics:
+            if isinstance(metric, Class):
+                methods_complexities = [method.complexity for method in metric.methods]
+                if len(methods_complexities) == 0:
+                    avg_complexity = 0
+                else:
+                    avg_complexity = sum(methods_complexities) / len(methods_complexities)
+                self.wmc.append(avg_complexity)
+            
+        
 
     def __calcule_cc_metrics(self, cc_metrics, noc = 0, nom = 0, nof = 0) -> None:
         """
@@ -199,6 +225,7 @@ class RadonConnector:
             self.docstring.append(raw_metrics.multi)
             self.blank.append(raw_metrics.blank)
             self.single_comment.append(raw_metrics.single_comments)
+
         except AttributeError:
             raise TypeError("Unsupported RADON type")
 
@@ -213,33 +240,35 @@ class RadonConnector:
             None
         """
         metric.radon_cc_total = sum(self.cc)
-        metric.radon_cc_avg = Math.get_mean_safe(self.cc)
+        metric.radon_cc_avg = Math.get_rounded_mean_safe(self.cc)
         metric.radon_loc_total = sum(self.loc)
-        metric.radon_loc_avg = Math.get_mean_safe(self.loc)
+        metric.radon_loc_avg = Math.get_rounded_mean_safe(self.loc)
         metric.radon_lloc_total = sum(self.lloc)
-        metric.radon_lloc_avg = Math.get_mean_safe(self.lloc)
+        metric.radon_lloc_avg = Math.get_rounded_mean_safe(self.lloc)
         metric.radon_sloc_total = sum(self.sloc)
-        metric.radon_sloc_avg = Math.get_mean_safe(self.sloc)
+        metric.radon_sloc_avg = Math.get_rounded_mean_safe(self.sloc)
         metric.radon_comments_total = sum(self.comments)
-        metric.radon_comments_avg = Math.get_mean_safe(self.comments)
+        metric.radon_comments_avg = Math.get_rounded_mean_safe(self.comments)
         metric.radon_docstring_total = sum(self.docstring)
-        metric.radon_docstring_avg = Math.get_mean_safe(self.docstring)
+        metric.radon_docstring_avg = Math.get_rounded_mean_safe(self.docstring)
         metric.radon_blank_total = sum(self.blank)
-        metric.radon_blank_avg = Math.get_mean_safe(self.blank)
+        metric.radon_blank_avg = Math.get_rounded_mean_safe(self.blank)
         metric.radon_single_comments_total = sum(self.single_comment)
-        metric.radon_single_comments_avg = Math.get_mean_safe(self.single_comment)
+        metric.radon_single_comments_avg = Math.get_rounded_mean_safe(self.single_comment)
         metric.radon_noc_total = sum(self.noc)
-        metric.radon_noc_avg = Math.get_mean_safe(self.noc)
+        metric.radon_noc_avg = Math.get_rounded_mean_safe(self.noc)
         metric.radon_nom_total = sum(self.nom)
-        metric.radon_nom_avg = Math.get_mean_safe(self.nom)
+        metric.radon_nom_avg = Math.get_rounded_mean_safe(self.nom)
         metric.radon_nof_total = sum(self.nof)
-        metric.radon_nof_avg = Math.get_mean_safe(self.nof)
+        metric.radon_nof_avg = Math.get_rounded_mean_safe(self.nof)
         metric.radon_class_loc_total = sum(self.class_loc)
-        metric.radon_class_loc_avg = Math.get_mean_safe(self.class_loc)
+        metric.radon_class_loc_avg = Math.get_rounded_mean_safe(self.class_loc)
         metric.radon_method_loc_total = sum(self.method_loc)
-        metric.radon_method_loc_avg = Math.get_mean_safe(self.method_loc)
+        metric.radon_method_loc_avg = Math.get_rounded_mean_safe(self.method_loc)
         metric.radon_func_loc_total = sum(self.func_loc)
-        metric.radon_func_loc_avg = Math.get_mean_safe(self.func_loc)
+        metric.radon_func_loc_avg = Math.get_rounded_mean_safe(self.func_loc)
+        metric.radon_wmc_total = sum(self.wmc)
+        metric.radon_wmc_avg = Math.get_rounded_mean_safe(self.wmc)
         
         # Save metrics values into the database
         self.session.add(metric)

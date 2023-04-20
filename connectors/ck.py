@@ -35,8 +35,9 @@ class CkConnector:
         metric = self.session.query(Metric).filter(Metric.version_id == self.version.version_id).first()
         if not metric:
             metric = Metric()
-        if self.configuration.language != "Java":
-            logging.info('CK is only used for Java language')
+        if self.configuration.language.lower() != "java":
+            logging.error('CK is only used for Java language')
+            raise Exception("CK can only analyze Java code")
         elif not metric.ck_wmc:
             self.compute_metrics(metric)
         else:
@@ -44,9 +45,7 @@ class CkConnector:
 
     def __compute_mean(self, metric, csv_file):
         tmp = csv_file[metric].tolist()
-        # return Math.get_rounded_mean(tmp)
-        # TODO fixme
-        return Math.get_rounded_mean(tmp)
+        return Math.get_rounded_mean_safe(tmp)
 
     @timeit
     def compute_metrics(self, metric):

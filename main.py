@@ -27,6 +27,7 @@ from models.model import Model
 from models.database import setup_database
 from connectors.git import GitConnector
 from connectors.glpi import GlpiConnector
+from utils.metricfactory import MetricFactory
 from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
 from utils.dirs import TmpDirCopyFilteredWithEnv
@@ -142,7 +143,7 @@ def report(ctx, output, report_name,
            ml_html_exporter_provider = Provide[Container.ml_html_exporter_provider.provider]):
     """Create a basic HTML report"""
     MlFactory.create_predicting_ml_model(project.project_id)
- 
+    MetricFactory.create_metrics()
     exporter = html_exporter_provider(output)
     os.makedirs(output, exist_ok=True)
     if report_name == "churn":
@@ -177,6 +178,7 @@ def import_file(ctx, target_table, file_path, overwrite,
 def train(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_provider.provider]):
     """Train a model"""
     MlFactory.create_training_ml_model(model_name)
+    MetricFactory.create_metrics()
     model = ml_factory_provider(project.project_id)
     model.train()
     click.echo("Model was trained")
@@ -188,6 +190,7 @@ def train(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_pr
 def predict(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_provider.provider]):
     """Predict next value with a trained model"""
     MlFactory.create_training_ml_model(model_name)
+    MetricFactory.create_metrics()
     model = ml_factory_provider(project.project_id)
     value = model.predict()
     click.echo("Predicted value : " + str(value))
@@ -265,10 +268,12 @@ def populate(ctx, skip_versions,
              jira_connector_provider = Provide[Container.jira_connector_provider.provider],
              glpi_connector_provider = Provide[Container.glpi_connector_provider.provider],
              ck_connector_provider = Provide[Container.ck_connector_provider.provider],
+             pylint_connector_provider = Provide[Container.pylint_connector_provider.provider],
              file_analyzer_provider = Provide[Container.file_analyzer_provider.provider],
              jpeek_connector_provider = Provide[Container.jpeek_connector_provider.provider],
              legacy_connector_provider = Provide[Container.legacy_connector_provider.provider],
              codemaat_connector_provider = Provide[Container.codemaat_connector_provider.provider],
+             pdepend_connector_provider = Provide[Container.pdepend_connector_provider.provider],
              radon_connector_provider = Provide[Container.radon_connector_provider.provider]):
     """Populate the database with the provided configuration"""
 
@@ -317,7 +322,7 @@ def populate(ctx, skip_versions,
             lizard = file_analyzer_provider(directory=tmp_work_dir, version=version)
             lizard.analyze_source_code()
 
-            if (configuration.language.lower() == "java"):
+            if configuration.language.lower() == "java":
                 # Get metrics with CK
                 ck = ck_connector_provider(directory=tmp_work_dir, version=version)
                 ck.analyze_source_code()
@@ -325,12 +330,26 @@ def populate(ctx, skip_versions,
                 # Get metrics with JPeek
                 # jp = jpeek_connector_provider(directory=tmp_work_dir, version=version)
                 # jp.analyze_source_code()
+                            
+            elif configuration.language.lower() == "php":
+                # Get metrics with PDepend
+                pdepend = pdepend_connector_provider(directory=tmp_work_dir, version=version)
+                pdepend.analyze_source_code()
             
-            elif (configuration.language.lower() == "python"):
+            elif configuration.language.lower() == "python":
                 
                 # Get metrics with Radon
                 radon = radon_connector_provider(directory = tmp_work_dir, version = version)
                 radon.analyze_source_code()
+
+                # Get metrics with Pylint
+                pylint = pylint_connector_provider(directory = tmp_work_dir, version = version)
+                pylint.analyze_source_code()
+                
+            else:
+                raise Exception(f"Unsupported language: {configuration.language}")
+
+
 
     
 
@@ -381,6 +400,7 @@ if __name__ == '__main__':
             __name__,
             "utils.gitfactory",
             "utils.mlfactory",
+            "utils.metricfactory"
         ])
 
         configure_logging()
