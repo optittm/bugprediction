@@ -41,7 +41,7 @@
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item">
                                         <b>Issues</b> (so far): {{ current_release.Version.bugs }}<br />
-                                        {% if is_model_trained == False %}
+                                        {% if model_train == False %}
                                             <span> No Model trained </span>
                                         {% else %}
                                             {% if current_release.Version.bugs > bugs_median | int %}
@@ -54,7 +54,7 @@
                                         {% endif %}
                                     </li>
                                     <li class="list-group-item">
-                                        {% if is_model_trained == True %}
+                                        {% if model_train == True %}
                                             {% if predicted_bugs > -1 %}
                                                 Predicted bugs: {{ predicted_bugs }} ({{ model_name }})
                                             {% endif %}
@@ -169,7 +169,7 @@
             <h2>Last 3 versions</h2>
             <div class="col-4">
                 <h4>Number of Bugs</h4>
-                {% if is_model_trained == False %}
+                {% if model_train == False %}
                     <h4> No Model trained </h4>
                 {% endif %}
                 {{ graph_bugs | safe }}

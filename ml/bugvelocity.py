@@ -20,7 +20,6 @@ class BugVelocity(ml):
     def __init__(self, project_id, session, config):
         ml.__init__(self, project_id, session, config)
         self.name = "bugvelocity"
-        self.is_model_trained = False
 
     @timeit
     def train(self):
@@ -49,8 +48,7 @@ class BugVelocity(ml):
         self.mse = mean_squared_error(y_test, rdmForest_predictions)
         logging.info("BugVelocity: Mean Square Error : " + str(self.mse))
         self.store()
-        self.is_model_trained=True
-    
+
 
     @timeit
     def predict(self)->int:

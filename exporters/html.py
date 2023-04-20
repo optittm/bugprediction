@@ -114,7 +114,7 @@ class HtmlExporter:
         code_churn_avg_median = np.median([row.Version.code_churn_avg for row in releases])
 
         predicted_bugs = -1
-        if self.__model.is_model_trained:
+        if self.__model.is_model_trained() :
             predicted_bugs = self.__model.predict()
         
 
@@ -148,7 +148,7 @@ class HtmlExporter:
             "graph_risk": fig_risk_html,
             "model_train": True
         }
-        if not self.__model.is_model_trained :
+        if not self.__model.is_model_trained() :
             data = {
                 "project": project,
                 "current_release" : current_release,
