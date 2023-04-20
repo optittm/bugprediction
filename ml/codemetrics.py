@@ -18,6 +18,7 @@ class CodeMetrics(ml):
     def __init__(self, project_id, session, config):
         ml.__init__(self, project_id, session, config)
         self.name = "codemetrics"
+        self.is_model_trained = False
 
     @timeit
     @inject
@@ -49,6 +50,7 @@ class CodeMetrics(ml):
         self.mse = mean_squared_error(y_test, xgbRegressor_predictions)
         logging.info("BugVelocity: Mean Square Error : " + str(self.mse))
         self.store()
+        self.is_model_trained = True
 
     @timeit
     def predict(self, metrics = Provide[Container.metric_factory_provider]) -> int:
