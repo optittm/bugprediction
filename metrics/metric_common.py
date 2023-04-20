@@ -14,21 +14,6 @@ class MetricCommon():
         self.session = session
         self.config = config
 
-        self.version_metrics_query = self._get_version_metrics_query().subquery()
-        self.lizard_metrics_query = self._get_lizard_metrics_query().subquery()
-        self.halstead_metrics_query = self._get_halstead_metrics_query().subquery()
-        self.query: Query = session.query(
-                # Selects all columns of subqueries except version_id
-                # version_id is needed to perform the join statements but we remove it from final output
-                *[c for c in self.version_metrics_query.c if c.name != 'version_id'],
-                *[c for c in self.lizard_metrics_query.c if c.name != 'version_id'],
-                *[c for c in self.halstead_metrics_query.c if c.name != 'version_id']
-                # Then joining all tables on version_id starting on the version subquery
-            ) \
-                .select_from(self.version_metrics_query) \
-                .join(self.lizard_metrics_query, Version.version_id == self.lizard_metrics_query.c.version_id) \
-                .join(self.halstead_metrics_query, Version.version_id == self.halstead_metrics_query.c.version_id)
-
     def _order_by_filters(
             self,
             select_query: Query,
@@ -87,12 +72,30 @@ class MetricCommon():
                                 Metric.halstead_difficulty,Metric.halstead_effort, Metric.halstead_time, 
                                 Metric.halstead_bugs)
     
+    def _get_language_specific_query(self) -> Query:
+        version_metrics_query = self._get_version_metrics_query().subquery()
+        lizard_metrics_query = self._get_lizard_metrics_query().subquery()
+        halstead_metrics_query = self._get_halstead_metrics_query().subquery()
+        return self.session.query(
+                # Selects all columns of subqueries except version_id
+                # version_id is needed to perform the join statements but we remove it from final output
+                *[c for c in version_metrics_query.c if c.name != 'version_id'],
+                *[c for c in lizard_metrics_query.c if c.name != 'version_id'],
+                *[c for c in halstead_metrics_query.c if c.name != 'version_id']
+                # Then joining all tables on version_id starting on the version subquery
+            ) \
+                .select_from(version_metrics_query) \
+                .join(lizard_metrics_query, Version.version_id == lizard_metrics_query.c.version_id) \
+                .join(halstead_metrics_query, Version.version_id == halstead_metrics_query.c.version_id)
+    
     def get_train_metrics(self, project_id) -> 'MetricCommon':
-        query = self._order_by_filters(self.query, project_id, "desc", "train")
+        select_query = self._get_language_specific_query()
+        query = self._order_by_filters(select_query, project_id, "desc", "train")
         self.metrics_df = pd.read_sql(query.statement, self.session.get_bind())
         return self
 
     def get_predict_metrics(self, project_id) -> 'MetricCommon':
-        query = self._order_by_filters(self.query, project_id, "asc", "predict")
+        select_query = self._get_language_specific_query()
+        query = self._order_by_filters(select_query, project_id, "asc", "predict")
         self.metrics_df = pd.read_sql(query.statement, self.session.get_bind())
         return self

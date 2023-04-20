@@ -6,27 +6,6 @@ from models.version import Version
 
 class MetricPython(MetricCommon):
 
-    def __init__(self, session, config):
-        super(MetricPython, self).__init__(session, config)
-
-        self.radon_metrics_query = self._get_radon_metrics_query().subquery()
-        self.pylint_metrics_query = self._get_pylint_metrics_query().subquery()
-        self.query = self.session.query(
-            # Selects all columns of subqueries except version_id
-            # version_id is needed to perform the join statements but we remove it from final output
-            *[c for c in self.version_metrics_query.c if c.name != 'version_id'],
-            *[c for c in self.lizard_metrics_query.c if c.name != 'version_id'],
-            *[c for c in self.halstead_metrics_query.c if c.name != 'version_id'],
-            *[c for c in self.radon_metrics_query.c if c.name != 'version_id'],
-            *[c for c in self.pylint_metrics_query.c if c.name != 'version_id']
-            # Then joining all tables on version_id starting on the version subquery
-        ) \
-            .select_from(self.version_metrics_query) \
-            .join(self.lizard_metrics_query, Version.version_id == self.lizard_metrics_query.c.version_id) \
-            .join(self.halstead_metrics_query, Version.version_id == self.halstead_metrics_query.c.version_id) \
-            .join(self.radon_metrics_query, Version.version_id == self.radon_metrics_query.c.version_id) \
-            .join(self.pylint_metrics_query, Version.version_id == self.pylint_metrics_query.c.version_id)
-
     def _get_radon_metrics_query(self) -> Query:
         return self.session.query(Metric.version_id, Metric.radon_cc_total, Metric.radon_cc_avg, Metric.radon_loc_total,
                                 Metric.radon_loc_avg, Metric.radon_lloc_total, Metric.radon_lloc_avg,
@@ -47,3 +26,25 @@ class MetricPython(MetricCommon):
                                 Metric.pylint_num_numbers, Metric.pylint_num_math_op, Metric.pylint_num_variable,
                                 Metric.pylint_num_inner_cls_and_lambda, Metric.pylint_num_docstring, Metric.pylint_num_import,
                                 Metric.pylint_lcc)
+    
+    def _get_language_specific_query(self) -> Query:
+        version_metrics_query = self._get_version_metrics_query().subquery()
+        lizard_metrics_query = self._get_lizard_metrics_query().subquery()
+        halstead_metrics_query = self._get_halstead_metrics_query().subquery()
+        radon_metrics_query = self._get_radon_metrics_query().subquery()
+        pylint_metrics_query = self._get_pylint_metrics_query().subquery()
+        return self.session.query(
+            # Selects all columns of subqueries except version_id
+            # version_id is needed to perform the join statements but we remove it from final output
+            *[c for c in version_metrics_query.c if c.name != 'version_id'],
+            *[c for c in lizard_metrics_query.c if c.name != 'version_id'],
+            *[c for c in halstead_metrics_query.c if c.name != 'version_id'],
+            *[c for c in radon_metrics_query.c if c.name != 'version_id'],
+            *[c for c in pylint_metrics_query.c if c.name != 'version_id']
+            # Then joining all tables on version_id starting on the version subquery
+        ) \
+            .select_from(version_metrics_query) \
+            .join(lizard_metrics_query, Version.version_id == lizard_metrics_query.c.version_id) \
+            .join(halstead_metrics_query, Version.version_id == halstead_metrics_query.c.version_id) \
+            .join(radon_metrics_query, Version.version_id == radon_metrics_query.c.version_id) \
+            .join(pylint_metrics_query, Version.version_id == pylint_metrics_query.c.version_id)
