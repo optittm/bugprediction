@@ -114,9 +114,7 @@ class HtmlExporter:
         code_churn_avg_median = np.median([row.Version.code_churn_avg for row in releases])
 
         predicted_bugs = -1
-        if self.__model.is_model_trained() :
-            predicted_bugs = self.__model.predict()
-        
+        predicted_bugs = self.__model.predict()
 
         risk = assess_next_release_risk(self.session, self.configuration, project.project_id)
 
@@ -130,10 +128,9 @@ class HtmlExporter:
         ))
         fig_risk_html = fig.to_html(full_html=False, include_plotlyjs=False)
 
-       
-        
         data = {
             "project": project,
+            "model_name" : self.__model.name,
             "current_release" : current_release,
             "bugs_median" : bugs_median,
             "changes_median" : changes_median,
@@ -145,26 +142,9 @@ class HtmlExporter:
             "graph_bugs": fig1_html,
             "graph_changes": fig2_html,
             "graph_xp": fig3_html,
-            "graph_risk": fig_risk_html,
-            "model_train": True
+            "graph_risk": fig_risk_html
         }
-        if not self.__model.is_model_trained() :
-            data = {
-                "project": project,
-                "current_release" : current_release,
-                "bugs_median" : None   ,
-                "changes_median" : changes_median,
-                "xp_devs_median" : xp_devs_median,
-                "code_churn_avg_median" : code_churn_avg_median,
-                "lizard_avg_complexity_median" : lizard_avg_complexity_median,
-                "predicted_bugs" : None,
-                "legacy_files": legacy_files,
-                "graph_bugs": fig1_html,
-                "graph_changes": fig2_html,
-                "graph_xp": fig3_html,
-                "graph_risk": fig_risk_html,
-                "model_train": False
-            }
+
         # Render the template and save the output
         template_loader = jinja2.FileSystemLoader(searchpath=template_path)
         template_env = jinja2.Environment(loader=template_loader)

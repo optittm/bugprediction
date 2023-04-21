@@ -54,10 +54,14 @@
                                         {% endif %}
                                     </li>
                                     <li class="list-group-item">
-                                        {% if model_train == True %}
-                                            {% if predicted_bugs > -1 %}
-                                                Predicted bugs: {{ predicted_bugs }} ({{ model_name }})
-                                            {% endif %}
+                                        {% if predicted_bugs == None %}
+                                            Predicted bugs: 
+                                            <span style="color: red;">
+                                                <strong>NO TRAINED MODEL</strong>
+                                            </span>
+                                        
+                                        {% elif predicted_bugs > -1 %}
+                                            Predicted bugs: {{ predicted_bugs }} ({{ model_name }})
                                         {% endif %}
                                     </li>
                                 </ul>
@@ -159,7 +163,12 @@
                 </div>
             </div>
 
-            <div class="col-6">
+            <div class="col-6 text-center">
+                {% if predicted_bugs == None %}
+                    <span style="color: red;">
+                        <strong>NO TRAINED MODEL : predicted bugs are not taken into account in the risk rating </strong>
+                    </span>
+                {% endif %}
                 <div>{{ graph_risk | safe }}</div>
             </div>
 
