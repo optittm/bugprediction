@@ -152,6 +152,7 @@ class Metric(Base):
     pylint_num_math_op = Column(Integer)
     pylint_num_variable = Column(Integer)
     pylint_num_inner_cls_and_lambda = Column(Integer)
+    pylint_num_log_stmts = Column(Integer)
     pylint_num_docstring = Column(Integer)
     pylint_num_import = Column(Integer)
     pylint_lcc = Column(Float)

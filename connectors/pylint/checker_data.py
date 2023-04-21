@@ -51,7 +51,7 @@ class CheckerData:
     # num_nested_blocks : int = 0
     num_inner_cls_and_lambda : int = 0
     # num_unique_words : int = 0
-    # num_log_stmts : int = 0
+    num_log_stmts : int = 0
     num_docstring : int = 0
     num_module : int = 0
     num_import : int = 0

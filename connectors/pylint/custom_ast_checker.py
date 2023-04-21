@@ -201,6 +201,7 @@ class CustomAstChecker(BaseChecker):
         None
         """
         self.data.num_loops += 1
+        self.data.num_log_stmts += 1
 
     def visit_while(self, node: astroid.While) -> None:
         """
@@ -214,6 +215,7 @@ class CustomAstChecker(BaseChecker):
         None
         """
         self.data.num_loops += 1
+        self.data.num_log_stmts += 1
 
     def visit_compare(self, node: astroid.Compare) -> None:
         """
@@ -340,6 +342,21 @@ class CustomAstChecker(BaseChecker):
         None
         """
         self.count_docstring(node)
+
+    def visit_boolop(self, node: astroid.BoolOp) -> None:
+        self.data.num_log_stmts += 1
+
+    def visit_unaryop(self, node: astroid.UnaryOp) -> None:
+        self.data.num_log_stmts += 1
+
+    def visit_ifexp(self, node: astroid.IfExp) -> None:
+        self.data.num_log_stmts += 1
+
+    def visit_if(self, node: astroid.If) -> None:
+        self.data.num_log_stmts += 1
+
+    def visit_with(self, node: astroid.With) -> None:
+        self.data.num_log_stmts += 1
     
     # method call when the visit is complete
     def close(self) -> None:

@@ -109,6 +109,7 @@ class PylintConnector:
         metric.pylint_num_math_op = data.num_math_op
         metric.pylint_num_variable = data.num_variable
         metric.pylint_num_inner_cls_and_lambda = data.num_inner_cls_and_lambda
+        metric.pylint_num_log_stmts = data.num_log_stmts
         metric.pylint_num_docstring = data.num_docstring
         metric.pylint_num_import = data.num_import
         metric.pylint_lcc = data.lcc
