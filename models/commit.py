@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
-from sqlalchemy.orm import relationship, backref
 from models.database import Base
 
 
@@ -58,7 +57,7 @@ class Comment(Base):
     """
     __tablename__ = "comments"
     comment_id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey("project.project_id"))
+    project_name = Column(Integer, ForeignKey("project.name"))
     user_id = Column(String)
     timestamp = Column(String)
     feature_url = Column(String)

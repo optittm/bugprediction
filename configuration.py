@@ -35,10 +35,10 @@ class Configuration:
         self.source_repo     = self.__get_required_value("OTTM_SOURCE_REPO")
         self.current_branch  = self.__get_required_value("OTTM_CURRENT_BRANCH")
         self.source_repo_url = self.__get_required_value("OTTM_SOURCE_REPO_URL")
-        self.survey_back_api_url = self.__get_required_value("SURVEY_BACK_API_URL")
-        self.survey_project_name = self.__get_required_value("SURVEY_PROJECT_NAME")
         self.source_bugs     =  self.__get_str_list("OTTM_SOURCE_BUGS")
 
+        self.survey_back_api_url = os.getenv("SURVEY_BACK_API_URL","")
+        self.survey_project_name = os.getenv("SURVEY_PROJECT_NAME","")
         self.scm_base_url    = os.getenv("OTTM_SCM_BASE_URL", "")
         self.scm_token       = os.getenv("OTTM_SCM_TOKEN", "")
         
