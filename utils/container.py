@@ -3,6 +3,7 @@ from configuration import Configuration
 from dotenv import load_dotenv
 from sqlalchemy.orm import sessionmaker
 from connectors.radon import RadonConnector
+from connectors.survey import SurveyAPIConnector
 from exporters.ml_reports import MlHtmlExporter
 
 from ml.ml import ml
@@ -91,6 +92,12 @@ class Container(containers.DeclarativeContainer):
         GitConnector
     )
 
+    survey_connector_provider = providers.AbstractFactory(
+        SurveyAPIConnector,
+        configuration= configuration,
+        session=session
+    )
+    
     ml_factory_provider = providers.AbstractFactory(
         ml
     )

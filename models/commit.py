@@ -44,9 +44,24 @@ class Commit(Base):
     date = Column(DateTime)
     message = Column(String)
     insertions = Column(Integer)
+    
     deletions = Column(Integer)
     lines = Column(Integer)
     files = Column(Integer)
     dmm_unit_size = Column(Float)
     dmm_unit_complexity = Column(Float)
     dmm_unit_interfacing = Column(Float)
+
+class Comment(Base):
+    """
+    Comment
+    """
+    __tablename__ = "comments"
+    comment_id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("project.project_id"))
+    user_id = Column(String)
+    timestamp = Column(String)
+    feature_url = Column(String)
+    rating = Column(Integer)
+    comment = Column(String)
+    

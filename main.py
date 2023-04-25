@@ -27,6 +27,7 @@ from models.model import Model
 from models.database import setup_database
 from connectors.git import GitConnector
 from connectors.glpi import GlpiConnector
+from connectors.survey import SurveyAPIConnector
 from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
 from utils.dirs import TmpDirCopyFilteredWithEnv
@@ -270,8 +271,11 @@ def populate(ctx, skip_versions,
              legacy_connector_provider = Provide[Container.legacy_connector_provider.provider],
              codemaat_connector_provider = Provide[Container.codemaat_connector_provider.provider],
              pdepend_connector_provider = Provide[Container.pdepend_connector_provider.provider],
-             radon_connector_provider = Provide[Container.radon_connector_provider.provider]):
+             radon_connector_provider = Provide[Container.radon_connector_provider.provider],
+             survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Populate the database with the provided configuration"""
+
+    
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
@@ -295,7 +299,9 @@ def populate(ctx, skip_versions,
             # if we use code maat git.setup_aliases(configuration.author_alias)
     
     git.populate_db(skip_versions)
-
+    survey = SurveyAPIConnector(configuration, session)
+    comments = survey.get_comments()
+    survey.save_comments_to_db(comments)
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     for version in versions:
