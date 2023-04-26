@@ -1,4 +1,4 @@
-"""add wmc radon
+"""upgrade metric table with wmc radon
 
 Revision ID: 7577e774f6e6
 Revises: c0d7844477a1
