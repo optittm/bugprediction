@@ -106,10 +106,12 @@ See the [list of commands](./docs/commands.md) for other options.
 
 ## Connecting with Survey
 
-BugPrediction can be connected with Survey to retrieve user feedback and add it to the database. To do so, you need to start the Survey server and add the following environment variables to the .env file:
-SURVEY_BACK_API_URL=<Survey_server_URL>
-SURVEY_PROJECT_NAME=<Survey_project_name>
-Make sure to replace <Survey_server_URL> with the URL of the Survey server and <Survey_project_name> with the name of the Survey project. Once you have configured these environment variables, BugPrediction can retrieve user feedback and add it to the database.
+BugPrediction can be connected with Survey to retrieve user feedback and add it to the database. To do so, you need to start the Survey server and add the following environment variables to the .env file:  
+```SURVEY_BACK_API_URL```
+```SURVEY_PROJECT_NAME```  
+
+Make sure to replace with the URL of the Survey server and with the name of the Survey project, if you want to get the user reviews of all the projects then leave the project name empty.
+
 ## How to get your tokens
 
 These tokens allow Bugprediction to call the apps' APIs and retrieve necessary data. Here's how to get each one of them.
