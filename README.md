@@ -104,6 +104,8 @@ One of the features of the report is to assess the risk of releasing the next ve
 
 See the [list of commands](./docs/commands.md) for other options.
 
+Please refer to the [advanced configuration documentation](./docs/advanced_configuration.md) for a more precise configuration.
+
 ## How to get your tokens
 
 These tokens allow Bugprediction to call the apps' APIs and retrieve necessary data. Here's how to get each one of them.

@@ -32,7 +32,7 @@ from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
 from utils.dirs import TmpDirCopyFilteredWithEnv
 from utils.gitfactory import GitConnectorFactory
-from utils.restric_folder import RestrictFolder
+from utils.restrict_folder import RestrictFolder
 
 def lint_aliases(raw_aliases) -> boolean:
     try:
@@ -300,8 +300,9 @@ def populate(ctx, skip_versions,
 
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
-    print("---------ICI------------", configuration.include_folders)
     restrict_folder = RestrictFolder(versions, configuration)
+    print("----------------------------ICI---------------------")
+    print(restrict_folder)
     for version in versions:
         process = subprocess.run([configuration.scm_path, "checkout", version.tag],
                                 stdout=subprocess.PIPE,
@@ -313,6 +314,8 @@ def populate(ctx, skip_versions,
 
             legacy = legacy_connector_provider(project.project_id, repo_dir, version)
             legacy.get_legacy_files(version)
+
+            
 
             # Get statistics from git log with codemaat
             # codemaat = codemaat_connector_provider(repo_dir, version)

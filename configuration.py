@@ -132,9 +132,9 @@ class Configuration:
     def __get_path_list(env_var) -> List[str]:
         path_list = {"*": []}
         if env_var in os.environ and os.environ[env_var]:
-            path_list = json.loads(os.environ[env_var])
+            path_list.update(json.loads(os.environ[env_var]))
         if isinstance(path_list, list):
-            path_list = {"*": path_list}
+            path_list["*"] = path_list
         print(path_list)
         return path_list
 
