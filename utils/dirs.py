@@ -1,8 +1,10 @@
 import glob
+import logging
 import os
 import shutil
 import fnmatch
 import tempfile
+from typing import List
 
 class TmpDirCopyFilteredWithEnv(tempfile.TemporaryDirectory):
 
@@ -23,6 +25,10 @@ class TmpDirCopyFilteredWithEnv(tempfile.TemporaryDirectory):
     def __copy_dirs_filtered(self):
         if self.__include_folders:
             self.__copy_included_dirs_only()
+            if len(os.listdir(self.name)) == 0:
+                logging.warning("All file precised are missing or every file include are also exclude")
+                logging.warning("The filter is ignored")
+                self.__copy_all_tree()
         else:
             self.__copy_all_tree()
 
@@ -30,7 +36,8 @@ class TmpDirCopyFilteredWithEnv(tempfile.TemporaryDirectory):
         for d in self.__include_folders:
             src = os.path.join(self.__src_dir, d)
             dst = os.path.join(self.name, d)
-            shutil.copytree(src, dst, ignore=self.__ignore_function)
+            if os.path.exists(src):
+                shutil.copytree(src, dst, ignore=self.__ignore_function)
 
     def __copy_all_tree(self):
         shutil.copytree(self.__src_dir, self.name, ignore=self.__ignore_function,dirs_exist_ok=True)
@@ -46,55 +53,3 @@ class TmpDirCopyFilteredWithEnv(tempfile.TemporaryDirectory):
     def __exit__(self, exc, value, tb):
         if self.__tmp_file_created:
             super().__exit__(exc, value, tb)
-
-
-
-def get_file_safe(root, dir, recursive=True):
-    """
-    Returns a list of paths to files that match the specified pattern in the given directory. If the
-    given directory does not exist, the method will attempt to find files starting from the parent
-    directory (root). If file search cannot be performed for any reason, the method will return an empty
-    list.
-
-    Args:
-        root (str): The path to the parent directory to search for files if the specified directory does not
-                 exist.
-        dir (str): The pattern to search for files in the directory.
-        recursive (bool): Specifies whether the search should be recursive (True) or not (False). By default,
-                      the search is recursive.
-
-    Returns
-        List[str]: A list of paths to the found files.
-
-    Raise:
-        FileNotFoundError
-    """
-    try:
-        return glob.glob(root + dir, recursive=recursive)
-    except FileNotFoundError:
-        return glob.glob(root, recursive=recursive)
-    
-def get_file_it_safe(root, dir, recursive=True):
-    """
-    Returns an iterator that yields paths to files that match the specified pattern in the given
-    directory. If the given directory does not exist, the method will attempt to find files starting from
-    the parent directory (root). If file search cannot be performed for any reason, the method will return
-    an empty iterator.
-
-    Args:
-        root (str): The path to the parent directory to search for files if the specified directory does not
-                 exist.
-        dir (str): The pattern to search for files in the directory.
-    recursive (bool): Specifies whether the search should be recursive (True) or not (False). By default,
-                      the search is recursive.
-                      
-    Returns:
-        Iterator[str]: An iterator that yields paths to the found files.
-
-    Raise:
-        FileNotFoundError
-    """
-    try:
-        return glob.iglob(root + dir, recursive=recursive)
-    except FileNotFoundError:
-        return glob.iglob(root, recursive=recursive)

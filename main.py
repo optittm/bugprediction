@@ -295,9 +295,9 @@ def populate(ctx, skip_versions,
         elif source_bugs.strip() == 'git':
             git.create_issues()
             # if we use code maat git.setup_aliases(configuration.author_alias)
-    
+    """
     git.populate_db(skip_versions)
-
+    """
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     restrict_folder = RestrictFolder(versions, configuration)
@@ -309,13 +309,11 @@ def populate(ctx, skip_versions,
                                 cwd=repo_dir)
         logging.info('Executed command line: ' + ' '.join(process.args))
 
+        legacy = legacy_connector_provider(project.project_id, repo_dir, version)
+        legacy.get_legacy_files(version)
+
         with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version), 
                                        restrict_folder.get_exclude_folders(version)) as tmp_work_dir:
-
-            legacy = legacy_connector_provider(project.project_id, repo_dir, version)
-            legacy.get_legacy_files(version)
-
-            
 
             # Get statistics from git log with codemaat
             # codemaat = codemaat_connector_provider(repo_dir, version)
