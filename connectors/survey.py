@@ -1,7 +1,7 @@
 import logging
 import requests
 
-from models.commit import Comment
+from models.comment import Comment
 
 class SurveyAPIConnector:
     def __init__(self, config, session):
@@ -14,6 +14,7 @@ class SurveyAPIConnector:
         comments_json=response.json()
         comments = []
         for comment_json in comments_json:
+            
             comment=Comment(
                 comment_id=comment_json['id'],
                 project_name=comment_json['project_name'],
@@ -23,8 +24,12 @@ class SurveyAPIConnector:
                 rating=comment_json['rating'],
                 comment=comment_json['comment']
             )
-            if comment.project_name==self.configuration.survey_project_name or self.configuration.survey_project_name==None:
+           
+            if comment.project_name==self.configuration.survey_project_name or self.configuration.survey_project_name=="":
+
                 comments.append(comment)
+
+
         return comments
 
     def save_comments_to_db(self, comments):
