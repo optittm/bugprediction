@@ -23,16 +23,16 @@ The advanced configuration allows you to specify a more precise configuration us
         "path/to/folder1", 
         "path/to/folder2"
         ],
-    ">=1.0.1": [
+    "[]1.0.0, 3.0.0": [
         "path/to/folder3"
         ],
     "*": ["path/to/folder4"]
 }
 ```
 
-The operators that can be used in the configuration are ==, !=, <=, >=, <, > and *. The * operator means all versions without restriction.
+The operators that can be used in the configuration are ==, !=, <=, >=, <, >, [], ][, ]], [[ and *. The * operator means all versions without restriction. It is important to note that all rules are inclusive, meaning that if two or more rules match the same version, the combination of these rules will be used to include or exclude the folders.
 
-In the example above, the first entry specifies that for versions less than or equal to 1.0.0, the folders "path/to/folder1" and "path/to/folder2" should be included. The second entry specifies that for versions greater than or equal to 1.0.1, the folder "path/to/folder3" should be included. The third entry specifies that for all other versions, the folder "path/to/folder4" should be included.
+In the example above, the first entry specifies that for versions less than or equal to 1.0.0, the folders "path/to/folder1" should be included or excluded except for the version 1.0.0, the folder "path/to/folder1" and "path/to/folder2" should be included or excluded. The second entry specifies that for versions greater than or equal to 1.0.0 but also lower than 3.0.0 included, the folder "path/to/folder3" should be included or excluded. The third entry specifies that for all other versions, the folder "path/to/folder4" should be included or excluded.
 
 #### The `==` Operator
 
@@ -40,12 +40,12 @@ The `==` operator can be used to add exceptions to a rule. For example, if the c
 
 ```json
 {
-    ">=1.0.0": ["path_1"],
-    "==1.5.0": ["path_2"]
+    "==1.5.0": ["path_1"],
+    "1.5.0": ["path_1"]
 }
 ```
 
-Then for all versions greater than or equal to 1.0.0, the restriction will be `["path_1"]` except for version 1.5.0, which will have the restriction `["path_2"]`.
+Then for all versions greater than or equal to 1.0.0, the restriction will be `["path_1"]`. In addition, if a version is specified without an operator, the default operator used is `==`.
 
 #### The `!=` Operator
 
@@ -53,12 +53,113 @@ The `!=` operator is the exact opposite of the `==` operator. For example, if th
 
 ```json
 {
-    ">=1.0.0": ["path_1"],
-    "!=1.5.0": ["path_2"]
+    "!=1.5.0": ["path_1"]
 }
 ```
 
-Then for all versions greater than or equal to 1.0.0, the restriction will be `["path_2"]` except for version 1.5.0, which will have the restriction `["path_1"]`.
+Then for all versions except the version 1.5.0, will have the restriction `["path_1"]`.
+
+#### The `<=` Operator
+
+The `<`= operator is used to specify a maximum version restriction. For example, if the configuration is:
+
+```json
+{
+    "<=2.0.0": ["path_1"]
+}
+```
+
+Then for all versions less than or equal to 2.0.0 (inclusive), the restriction will be ["path_1"].
+
+
+#### The `>=` Operator
+
+The `>=` operator is used to specify a minimum version restriction. For example, if the configuration is:
+
+```json
+{
+    ">=2.0.0": ["path_1"]
+}
+```
+
+Then for all versions greater than or equal to 2.0.0 (inclusive), the restriction will be `["path_1"]`.
+
+#### The `<` Operator
+
+The `<` operator is used to specify a maximum version restriction, excluding the specified version. For example, if the configuration is:
+
+```json
+{
+    "<2.0.0": ["path_1"]
+}
+```
+
+Then for all versions less than 2.0.0 (exclusive), the restriction will be `["path_1"]`.
+
+#### The `>` Operator
+
+The `>` operator is used to specify a minimum version restriction, excluding the specified version. For example, if the configuration is:
+
+```json
+{
+    ">2.0.0": ["path_1"]
+}
+```
+
+Then for all versions greater than 2.0.0 (exclusive), the restriction will be ["path_1"].
+
+#### The `]]` Operator
+
+The `]]` operator is used to specify a range of versions, excluding both endpoints. For example, if the configuration is:
+
+```json
+{
+    "]]1.0.0,2.0.0": ["path_1"]
+}
+
+```
+
+Then for all versions greater than 1.0.0 (exclusive) and less than 2.0.0 (inclusive), the restriction will be ["path_1"].
+
+#### The `[[` Operator
+
+The `[[` operator is used to specify a range of versions, excluding both endpoints. For example, if the configuration is:
+
+```json
+{
+    "[[1.0.0,2.0.0": ["path_1"]
+}
+
+```
+
+Then for all versions greater than 1.0.0 (inclusive) and less than 2.0.0 (exclusive), the restriction will be ["path_1"].
+
+#### The `[]` Operator
+
+The `[]` operator is used to specify a range of versions, excluding both endpoints. For example, if the configuration is:
+
+```json
+{
+    "[]1.0.0,2.0.0": ["path_1"],
+    "1.0.0,2.0.0": ["path_1"],
+}
+
+```
+
+Then for all versions greater than 1.0.0 (inclusive) and less than 2.0.0 (inclusive), the restriction will be ["path_1"]. In addition, two versions is specified without an operator, the default operator used is `[]`.
+
+#### The `][` Operator
+
+The `][` operator is used to specify a range of versions, excluding both endpoints. For example, if the configuration is:
+
+```json
+{
+    "][1.0.0,2.0.0": ["path_1"]
+}
+
+```
+
+Then for all versions greater than 1.0.0 (exclusive) and less than 2.0.0 (exclusive), the restriction will be ["path_1"].
 
 #### The `*` Operator
 
@@ -75,40 +176,6 @@ Then the restriction for all version under 1.0.0 will be `["path_2"]` and it wil
 
 Note that if the `*` operator is not specified in the configuration, there will be no default restriction applied to versions that are not covered by other rules. In this case, any version that is not covered by a rule will not have any restrictions applied to it and all folders will be used.
 
-#### Handling Conflicts
-
-In case of conflicts between rules for the same version, the lower version rule will be ignored. For example, if the configuration is:
-
-```json
-{
-    "<=2.0.0": ["path_2"],
-    ">=1.0.0": ["path_1"]
-}
-```
-
-Then the restriction applied to the versions between 1.0.0 and 2.0.0 will be `["path_2"]`.
-
-Note that this behavior also applies to conflicting rules with different operators. For example, if the configuration is:
-
-```json
-{
-    "<1.0.0": ["path_1"],
-    "<1.5.0": ["path_2"]
-}
-```
-
-Then for version 0.5.0, the restriction will be `["path_1"]`.
-
-Similarly, if the configuration is:
-
-```json
-{
-    ">1.0.0": ["path_1"],
-    ">1.5.0": ["path_2"]
-}
-```
-Then for version 2.0.0, the restriction will be `["path_2"]`.
-
 #### Handling Unrecognized Versions
 
 When a version is not recognized during comparison with a rule, the restriction applied will be that of the `*` operator. For example, if the configuration is:
@@ -119,7 +186,34 @@ When a version is not recognized during comparison with a rule, the restriction 
 }
 ```
 
-Then for all versions that fail to be parsed in SemVer format, the * restriction will be applied. For example, a version name like version_one will have the * restriction applied, resulting in ["path_3"].
+Then for all versions that fail to be parsed in SemVer format, the * restriction will be applied. For example, a version name like `invalid` will have the `*` restriction applied, resulting in `["path_3"]`.
 
-Note that it is recommended to always include a rule for the `*` operator to cover any unrecognized versions.
- 
+Note that it is recommended to always include a rule for the `*` operator to cover any unrecognized versions. Additionally, the program will always attempt to construct a SemVer object from the version information found in the configuration, even if it is not in a valid SemVer format.
+
+#### Resolving Conflicts in Rules
+
+In case of conflicts in rules, the operator used in the rule defines the type of rule to be applied. For instance, if the configuration is:
+
+```json
+{
+    "<=2.0.0,1.0.0": ["path_2"]
+}
+```
+
+Then the rule will be interpreted as the same as:
+
+```json
+{
+    "<=2.0.0": ["path_2"]
+}
+```
+
+If a rule cannot be interpreted, it will be ignored by the program. For example, if the configuration is:
+
+```json
+{
+    "[]1.0.0": ["path_2"]
+}
+```
+
+Then the rule will be ignored by the program.

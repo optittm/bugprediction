@@ -74,15 +74,15 @@ class TestSemVersion(unittest.TestCase):
         self.assertEqual(str(ver.version), "1.0.0")
         
 class TestDefaultSemVer(unittest.TestCase):
-        # No test needded
-        pass
+    # No test needded
+    pass
 
 class TestBaseRule(unittest.TestCase):
 
     def test_parse_invalid(self):
         input = "invalid"
-        ver = BaseRule.parse(input)
-        self.assertIsInstance(ver, DefaultRule)
+        with self.assertRaises(ValueError):
+            BaseRule.parse(input)
 
     def test_parse_default(self):
         input = "*"
@@ -195,3 +195,7 @@ class TestBornedRule(unittest.TestCase):
         rule = BornedRule("[]1.0.0, 2.0.0")
         ver = SemVersion("1.0.0")
         self.assertTrue(rule.match(ver))
+
+class TestDefaultRule(unittest.TestCase):
+    # No test needded
+    pass

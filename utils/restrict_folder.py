@@ -222,6 +222,9 @@ class BaseRule:
         Returns:
             BaseRule: An instance of a subclass of BaseRule.
         """        
+        if str_rule == "*":
+            return DefaultRule()
+
         try:
             return BornedRule(str_rule)
         except ValueError:
@@ -234,8 +237,9 @@ class BaseRule:
             # The given string cannot be parsed as a OperatorRule
             pass
 
-        # The given string cannot be parsed return the default rule
-        return DefaultRule()
+        # The given string cannot be parsed raise an error
+        raise ValueError("Malformed rule: ", str_rule)
+        
 
     
 class OperatorRule(BaseRule):
@@ -453,8 +457,9 @@ class RestrictFolder:
         self.semver_names = {}
         self.__prepare_versions()
 
-        self.include_ruleset = set(BaseRule.parse(rule) for rule in self.include_folders_filters.keys())
-        self.exclude_ruleset = set(BaseRule.parse(rule) for rule in self.exclude_folders_filters.keys())
+        self.include_ruleset = set()
+        self.exclude_ruleset = set()
+        self.__compute_ruleset()
         self.__compute_rules()
 
     def __prepare_versions(self) -> None:
@@ -485,6 +490,21 @@ class RestrictFolder:
         for version in set(self.semver_names.values()):
             self.include_folders[version] = set()
             self.exclude_folders[version] = set()
+
+    def __compute_ruleset(self):
+        for rule in self.include_folders_filters.keys():
+            try:
+                self.include_ruleset.add(BaseRule.parse(rule))
+            except ValueError:
+                # ignore un parsabled rules
+                pass
+
+        for rule in self.exclude_folders_filters.keys():
+            try:
+                self.exclude_ruleset.add(BaseRule.parse(rule))
+            except ValueError:
+                # ignore un parsabled rules
+                pass
 
     def __compute_rules(self) -> None:
         """
