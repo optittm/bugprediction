@@ -295,14 +295,12 @@ def populate(ctx, skip_versions,
         elif source_bugs.strip() == 'git':
             git.create_issues()
             # if we use code maat git.setup_aliases(configuration.author_alias)
-    """
+
     git.populate_db(skip_versions)
-    """
+    
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     restrict_folder = RestrictFolder(versions, configuration)
-    print("----------------------------ICI---------------------")
-    print(restrict_folder.include_folders)
     for version in versions:
         process = subprocess.run([configuration.scm_path, "checkout", version.tag],
                                 stdout=subprocess.PIPE,
