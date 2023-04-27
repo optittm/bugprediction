@@ -3,65 +3,195 @@ import unittest
 
 import semver
 
-from utils.restrict_folder import Rule
+from utils.restrict_folder import BaseRule, BaseSemVer, BornedRule, DefaultRule, DefaultSemVer, OperatorRule, SemVersion
 
-class TestRule(unittest.TestCase):
+class TestBaseSemVer(unittest.TestCase):
     
+    def test_coerce_invalid(self):
+        invalid_str = "invalid"
+        ver, rest = BaseSemVer.coerce(invalid_str)
+        self.assertIsNone(ver)
+        self.assertEqual(rest, invalid_str)
+
+    def test_coerce_malformed(self):
+        malformed_str = "v1 a"
+        ver, rest = BaseSemVer.coerce(malformed_str)
+        self.assertIsNotNone(ver)
+        self.assertEqual(str(ver), "1.0.0")
+        self.assertIsNotNone(rest)
+
+    def test_coerce_valid(self):
+        valid_str = "1.0.0"
+        ver, rest = BaseSemVer.coerce(valid_str)
+        self.assertIsNotNone(ver)
+        self.assertEqual(str(ver), valid_str)
+        self.assertEqual(rest, "")
+
+    def test_parse_invalid(self):
+        invalid_str = "invalid"
+        ver = BaseSemVer.parse(invalid_str)
+        self.assertIsInstance(ver, DefaultSemVer)
+        self.assertEqual(ver.version, "*")
+
+    def test_parse_default(self):
+        invalid_str = "*"
+        ver = BaseSemVer.parse(invalid_str)
+        self.assertIsInstance(ver, DefaultSemVer)
+        self.assertEqual(ver.version, "*")
+    
+    def test_parse_malformed(self):
+        invalid_str = "v1 a"
+        ver = BaseSemVer.parse(invalid_str)
+        self.assertIsInstance(ver, SemVersion)
+        self.assertEqual(str(ver.version), "1.0.0")
+
+    def test_parse_valid(self):
+        invalid_str = "1.0.0"
+        ver = BaseSemVer.parse(invalid_str)
+        self.assertIsInstance(ver, SemVersion)
+        self.assertEqual(str(ver.version), "1.0.0")
+
+class TestSemVersion(unittest.TestCase):
+
+    def test_init_bad_type(self):
+        input = ["1.0.0"]
+        with self.assertRaises(TypeError):
+            SemVersion(input)
+
+    def test_init_invalid(self):
+        input = "invalid"
+        with self.assertRaises(ValueError):
+            SemVersion(input)
+
     def test_init_malformed(self):
-        r1 = Rule("invalid")
-        self.assertEqual(r1.operator, "*")
-        self.assertEqual(r1.semver, "*")
+        input = "v1 a"
+        ver = SemVersion(input)
+        self.assertEqual(str(ver.version), "1.0.0")
 
-    def test_init_semver_wildcard(self):
-        r1 = Rule("*")
-        self.assertEqual(r1.operator, "*")
-        self.assertEqual(r1.semver, "*")
+    def test_init_valid(self):
+        input = "1.0.0"
+        ver = SemVersion(input)
+        self.assertEqual(str(ver.version), "1.0.0")
+        
+class TestDefaultSemVer(unittest.TestCase):
+        # No test needded
+        pass
 
-    def test_init_semver_exact(self):
-        r1 = Rule(">=1.2.3")
-        self.assertEqual(r1.operator, ">=")
-        self.assertEqual(r1.semver.major, 1)
-        self.assertEqual(r1.semver.minor, 2)
-        self.assertEqual(r1.semver.patch, 3)
+class TestBaseRule(unittest.TestCase):
 
-    def test_match(self):
-        r1 = Rule(">1.2.3")
-        r2 = Rule(">=1.2.4")
-        r3 = Rule("<1.2.4")
-        r4 = Rule("<=1.2.4")
-        r5 = Rule("==1.2.4")
-        r6 = Rule("!=1.2.4")
-        r7 = Rule("*")
+    def test_parse_invalid(self):
+        input = "invalid"
+        ver = BaseRule.parse(input)
+        self.assertIsInstance(ver, DefaultRule)
 
-        v1 = semver.Version.parse("1.2.3")
-        v2 = semver.Version.parse("1.2.4")
-        v3 = semver.Version.parse("1.2.5")
+    def test_parse_default(self):
+        input = "*"
+        ver = BaseRule.parse(input)
+        self.assertIsInstance(ver, DefaultRule)
 
-        # test >
-        self.assertFalse(r1.match(v1))
-        self.assertTrue(r1.match(v2))
-        self.assertTrue(r1.match(v3))
-        # test >=
-        self.assertFalse(r2.match(v1))
-        self.assertTrue(r2.match(v2))
-        self.assertTrue(r2.match(v3))
-        # test <
-        self.assertTrue(r3.match(v1))
-        self.assertFalse(r3.match(v2))
-        self.assertFalse(r3.match(v3))
-        # test <=
-        self.assertTrue(r4.match(v1))
-        self.assertTrue(r4.match(v2))
-        self.assertFalse(r4.match(v3))
-        # test ==
-        self.assertFalse(r5.match(v1))
-        self.assertTrue(r5.match(v2))
-        self.assertFalse(r5.match(v3))
-        # test !=
-        self.assertTrue(r6.match(v1))
-        self.assertFalse(r6.match(v2))
-        self.assertTrue(r6.match(v3))
-        # test *
-        self.assertTrue(r7.match(v1))
-        self.assertTrue(r7.match(v2))
-        self.assertTrue(r7.match(v3))
+    def test_parse_malformed(self):
+        input = "v1 a"
+        ver = BaseRule.parse(input)
+        self.assertIsInstance(ver, OperatorRule)
+
+    def test_parse_valid_operator(self):
+        input = ">=1.0.0"
+        ver = BaseRule.parse(input)
+        self.assertIsInstance(ver, OperatorRule)
+
+    def test_parse_ambigous_op_rule(self):
+        input = ">=1.0.0,2.0.0"
+        ver = BaseRule.parse(input)
+        self.assertIsInstance(ver, OperatorRule)
+        self.assertEqual(str(ver.version), "1.0.0")
+
+    def test_parse_ambigous_borned_rule(self):
+        input = "[[1.0.0,2.0.0"
+        ver = BaseRule.parse(input)
+        self.assertIsInstance(ver, BornedRule)
+
+class TestOperatorRule(unittest.TestCase):
+
+    def test_init_invalid(self):
+        input = "invalid"
+        with self.assertRaises(ValueError):
+            OperatorRule(input)
+
+    def test_init_malformed_without_op(self):
+        input = "v1 a"
+        ver = OperatorRule(input)
+        self.assertEqual(ver.operator, "==")
+        self.assertEqual(str(ver.version), "1.0.0")
+
+    def test_init_malformed_with_op(self):
+        input = "<=v1 a"
+        ver = OperatorRule(input)
+        self.assertEqual(ver.operator, "<=")
+        self.assertEqual(str(ver.version), "1.0.0")
+
+    def test_init_valid_without_op(self):
+        input = "1.0.0"
+        ver = OperatorRule(input)
+        self.assertEqual(ver.operator, "==")
+        self.assertEqual(str(ver.version), "1.0.0")
+
+    def test_init_valid_with_op(self):
+        input = "<=1.0.0"
+        ver = OperatorRule(input)
+        self.assertEqual(ver.operator, "<=")
+        self.assertEqual(str(ver.version), "1.0.0")
+
+    def test_match_false(self):
+        rule = OperatorRule("<1.0.0")
+        ver = SemVersion("1.0.0")
+        self.assertFalse(rule.match(ver))
+
+    def test_match_True(self):
+        rule = OperatorRule("<1.0.0")
+        ver = SemVersion("0.9.0")
+        self.assertTrue(rule.match(ver))
+
+class TestBornedRule(unittest.TestCase):
+
+    def test_init_invalid(self):
+        input = "invalid"
+        with self.assertRaises(ValueError):
+            BornedRule(input)
+
+    def test_init_malformed_without_op(self):
+        input = "v3 a, v1 b"
+        rule = BornedRule(input)
+        self.assertEqual(str(rule.lower), "1.0.0")
+        self.assertEqual(str(rule.upper), "3.0.0")
+        self.assertEqual(rule.operator, "[]")
+
+    def test_init_malformed_with_op(self):
+        input = "][v3 a, v1 b"
+        rule = BornedRule(input)
+        self.assertEqual(str(rule.lower), "1.0.0")
+        self.assertEqual(str(rule.upper), "3.0.0")
+        self.assertEqual(rule.operator, "][")
+
+    def test_init_valid_without_op(self):
+        input = "1.0.0, 3.0.0"
+        rule = BornedRule(input)
+        self.assertEqual(str(rule.lower), "1.0.0")
+        self.assertEqual(str(rule.upper), "3.0.0")
+        self.assertEqual(rule.operator, "[]")
+
+    def test_init_valid_with_op(self):
+        input = "][1.0.0, 3.0.0"
+        rule = BornedRule(input)
+        self.assertEqual(str(rule.lower), "1.0.0")
+        self.assertEqual(str(rule.upper), "3.0.0")
+        self.assertEqual(rule.operator, "][")
+
+    def test_match_false(self):
+        rule = BornedRule("]]1.0.0, 2.0.0")
+        ver = SemVersion("1.0.0")
+        self.assertFalse(rule.match(ver))
+
+    def test_match_True(self):
+        rule = BornedRule("[]1.0.0, 2.0.0")
+        ver = SemVersion("1.0.0")
+        self.assertTrue(rule.match(ver))

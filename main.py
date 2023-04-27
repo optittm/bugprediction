@@ -302,7 +302,7 @@ def populate(ctx, skip_versions,
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     restrict_folder = RestrictFolder(versions, configuration)
     print("----------------------------ICI---------------------")
-    print(restrict_folder)
+    print(restrict_folder.include_folders)
     for version in versions:
         process = subprocess.run([configuration.scm_path, "checkout", version.tag],
                                 stdout=subprocess.PIPE,
