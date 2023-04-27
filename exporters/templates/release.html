@@ -41,7 +41,7 @@
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item">
                                         <b>Issues</b> (so far): {{ current_release.Version.bugs }}<br />
-                                        {% if model_train == False %}
+                                        {% if not model_train %}
                                             <span> No Model trained </span>
                                         {% else %}
                                             {% if current_release.Version.bugs > bugs_median | int %}
