@@ -135,7 +135,6 @@ class Configuration:
             path_list.update(json.loads(os.environ[env_var]))
         if isinstance(path_list, list):
             path_list["*"] = path_list
-        print(path_list)
         return path_list
 
     @staticmethod
