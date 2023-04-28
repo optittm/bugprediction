@@ -45,7 +45,7 @@ The `==` operator can be used to add exceptions to a rule. For example, if the c
 }
 ```
 
-Then for all versions greater than or equal to 1.0.0, the restriction will be `["path_1"]`. In addition, if a version is specified without an operator, the default operator used is `==`.
+Then for the version and only the version 1.5.0, the restriction will be `["path_1"]`. In addition, if a version is specified without an operator, the default operator used is `==`.
 
 #### The `!=` Operator
 
