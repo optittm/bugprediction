@@ -3,7 +3,7 @@ from configuration import Configuration
 from dotenv import load_dotenv
 from sqlalchemy.orm import sessionmaker
 from connectors.radon import RadonConnector
-from connectors.survey import SurveyAPIConnector
+from connectors.survey import SurveyConnector
 from exporters.ml_reports import MlHtmlExporter
 
 from ml.ml import ml
@@ -94,7 +94,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     survey_connector_provider = providers.AbstractFactory(
-        SurveyAPIConnector,
+        SurveyConnector,
         configuration= configuration,
         session=session
     )

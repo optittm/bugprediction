@@ -302,9 +302,9 @@ def populate(ctx, skip_versions,
             # if we use code maat git.setup_aliases(configuration.author_alias)
     
     git.populate_db(skip_versions)
-    survey = SurveyAPIConnector(configuration, session)
-    comments = survey.get_comments()
-    survey.save_comments_to_db(comments)
+    survey = survey_connector_provider()
+    survey.populate_comments()
+
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     for version in versions:

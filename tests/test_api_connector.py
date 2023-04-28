@@ -3,11 +3,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from requests import Response
-from connectors.survey import SurveyAPIConnector
+from connectors.survey import SurveyConnector
 from models.comment import Comment
 
 
-class TestSurveyAPIConnector(unittest.TestCase):
+class TestSurveyConnector(unittest.TestCase):
     def setUp(self):
         self.config=MagicMock()
         self.config.survey_back_api_url="http://example"
@@ -27,7 +27,7 @@ class TestSurveyAPIConnector(unittest.TestCase):
         self.responsemock.json.return_value=json.loads(self.expected_comments)
         self.responsemock._content=self.expected_comments
         self.requestmock.return_value=self.responsemock
-        self.connector = SurveyAPIConnector(self.config, self.session)
+        self.connector = SurveyConnector(self.config, self.session)
 
     def test_get_comments(self):
         with patch('requests.get', self.requestmock):

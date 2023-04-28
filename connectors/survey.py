@@ -3,10 +3,14 @@ import requests
 
 from models.comment import Comment
 
-class SurveyAPIConnector:
+class SurveyConnector:
     def __init__(self, config, session):
         self.configuration=config
         self.session=session
+
+    def populate_comments(self):
+        comments=self.get_comments
+        self.save_comments_to_db(comments)
 
     def get_comments(self):
         response=requests.get(f"{self.configuration.survey_back_api_url}/comments")

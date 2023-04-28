@@ -106,7 +106,7 @@ See the [list of commands](./docs/commands.md) for other options.
 
 ## Connecting with Survey
 
-BugPrediction can be connected with Survey to retrieve user feedback and add it to the database. To do so, you need to start the Survey server and add the following environment variables to the .env file:  
+BugPrediction can be connected with our [Survey tool](https://github.com/optittm/survey-back-api) to retrieve user feedback and add it to the database. To do so, you need to start the Survey API server and add the following environment variables to the .env file:    
 ```SURVEY_BACK_API_URL```  
 ```SURVEY_PROJECT_NAME```  
 
