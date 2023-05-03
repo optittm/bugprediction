@@ -1,4 +1,5 @@
 
+import logging
 import re
 import semver
 from typing import List
@@ -497,14 +498,14 @@ class RestrictFolder:
                 self.include_ruleset.add(BaseRule.parse(rule))
             except ValueError:
                 # ignore un parsabled rules
-                pass
+                logging.warning(f"The given rule '{rule}' in OTTM_INCLUDE_FOLDER can not be parsed and is ignored")
 
         for rule in self.exclude_folders_filters.keys():
             try:
                 self.exclude_ruleset.add(BaseRule.parse(rule))
             except ValueError:
                 # ignore un parsabled rules
-                pass
+                logging.warning(f"The given rule '{rule}' in OTTM_EXCLUDE_FOLDER can not be parsed and is ignored")
 
     def __compute_rules(self) -> None:
         """
