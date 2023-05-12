@@ -93,7 +93,7 @@ class Container(containers.DeclarativeContainer):
         GitConnector
     )
 
-    survey_connector_provider = providers.AbstractFactory(
+    survey_connector_provider = providers.Factory(
         SurveyConnector,
         configuration= configuration,
         session=session

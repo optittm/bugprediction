@@ -1,5 +1,8 @@
+import logging
 from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import validates
 from models.database import Base
+from models.project import Project
 
 
 class Comment(Base):
@@ -15,4 +18,9 @@ class Comment(Base):
     rating = Column(Integer)
     comment = Column(String)
 
-
+    @property
+    def valid_project_name(self):
+        if self.project_name not in self.session.query(Project.name).all():
+            logging.warning(f"Invalid project name: {self.project_name}")
+            return False
+        return True
