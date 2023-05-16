@@ -13,12 +13,13 @@ class SurveyConnector:
         self.save_comments_to_db(comments)
 
     def get_comments(self):
+        comments_list=[]
         if len(self.configuration.survey_project_name) == 0:
             response = requests.get(f"{self.configuration.survey_back_api_url}/comments")
             response.raise_for_status()
             comments_json = response.json()
+            comments_list.append(comments_json)
         else:
-            comments_list=[]
             for project_name in self.configuration.survey_project_name:
                 response = requests.get(f"{self.configuration.survey_back_api_url}/comments?project_name={project_name}")
                 response.raise_for_status()
