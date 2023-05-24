@@ -1,15 +1,8 @@
 import logging
 import math
-import subprocess
 from datetime import datetime, timedelta
-from typing import List
-from skcriteria import Objective
-from skcriteria.madm import similarity
-
-from git import BadName
 
 import pandas as pd
-from sqlalchemy import desc
 from sqlalchemy.sql import func
 from sklearn import preprocessing
 import pandas as pd
