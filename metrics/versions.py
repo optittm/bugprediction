@@ -174,23 +174,21 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     # # Filter our dataframe based on condition
     # filtered_df = df[condition]
 
-    bugs = np.array(df['bugs'])
+    bugs = np.array(df['bugs'].values)
     bugs = preprocessing.normalize([bugs])
-    bug_velocity = np.array(df['bug_velocity'])
+    bug_velocity = np.array(df['bug_velocity'].values)
     bug_velocity = preprocessing.normalize([bug_velocity])
-    changes = np.array(df['changes'])
+    changes = np.array(df['changes'].values)
     changes = preprocessing.normalize([changes])
-    avg_team_xp = np.array(df['avg_team_xp'])
+    avg_team_xp = np.array(df['avg_team_xp'].values)
     avg_team_xp = preprocessing.normalize([avg_team_xp])
-    lizard_avg_complexity = np.array(df['lizard_avg_complexity'])
+    lizard_avg_complexity = np.array(df['lizard_avg_complexity'].values)
     lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
-    code_churn_avg = np.array(df['code_churn_avg'])
+    code_churn_avg = np.array(df['code_churn_avg'].values)
     code_churn_avg = preprocessing.normalize([code_churn_avg])
 
     # Normalize the criteria and the alternative
     bugs_n = mt.Math.normalize_matrix(bugs)
-    print("df", df)
-    print("bugs_n", bugs_n)
     bug_velocity_n = mt.Math.normalize_matrix(bug_velocity)
     changes_n = mt.Math.normalize_matrix(changes)
     avg_team_xp_n = mt.Math.normalize_matrix(avg_team_xp)
@@ -203,36 +201,14 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     alternative = np.array([bug_velocity_n, changes_n, avg_team_xp_n, lizard_avg_complexity_n, code_churn_avg_n])
     alternative_label = ["bug_velocity", "changes", "avg_team_xp", "avg_complexity", "code_churn"]
 
-    criteria_weight = {
-        "bugs": 1
-    }
-
     # Calculate the correlation between the alternatives and the criteria.
-    print("criteria = ", criteria)
-    print("alternative = ", alternative)
     correlation_matrix, criteria_dict, alternative_dict = mt.Math.calculate_correlation_matrix(criteria, alternative, criteria_label, alternative_label)
     print("CORRELATION_MATRIX = ", correlation_matrix)
 
-    # Criteria weighting
-    decision_matrix = mt.Math.apply_criteria_weights(correlation_matrix, criteria_dict, criteria_weight)
-    print("DECISION_MATRIX = ", decision_matrix)
-    # Calculate the ideal matrix
-    ideal_matrix = mt.Math.calculte_matrix_extremum(decision_matrix, criteria_dict, alternative_dict, ["bugs"])
-    print("IDEAL = ", ideal_matrix)
-    # Calculate the anti-ideal matrix
-    anti_ideal_matrix = mt.Math.calculte_matrix_extremum(decision_matrix, criteria_dict, alternative_dict, [])
-    print("ANTI_IDEAL = ", anti_ideal_matrix)
-    # Retrive the current version metric
-    current_alternatives = np.array([[bug_velocity_n[0, 0], changes_n[0, 0], avg_team_xp_n[0, 0], lizard_avg_complexity_n[0, 0], code_churn_avg_n[0, 0]]])
-    print(ideal_matrix.shape, current_alternatives)
-    # Calcule distance between alternatives and extremum_matrixes for the current version
-    dist_to_ideal = mt.Math.calculate_euclidean_distance(current_alternatives, ideal_matrix)
-    print("DIST_IDEAL = ", dist_to_ideal)
-    dist_to_anti_ideal = mt.Math.calculate_euclidean_distance(current_alternatives, anti_ideal_matrix)
-    print("DIST_ANTI_IDEAL = ", dist_to_anti_ideal)
-    # Calcule the perfomance rate
-    rp = dist_to_anti_ideal / (dist_to_anti_ideal + dist_to_ideal)
-    print("RP = ", rp)
+    ts = mt.Math.TOPSIS(correlation_matrix, np.array([1]), np.array([mt.Math.TOPSIS.MIN]))
+    ts.topsis()
+    print("CLOSENESS = ", ts.get_closeness()) # Weight of the alternatives
+    print("CLOSENESS RANK = ", ts.get_ranking()) # Ranking of the criterion
 
     scaled_df = pd.DataFrame({
         'bug_velocity': bug_velocity[0],
@@ -254,8 +230,6 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
          (scaled_df["lizard_avg_complexity"] * 40) +
          (scaled_df["code_churn_avg"] * 20)
     )
-
-    
 
     # Return risk assessment along with median and max risk scores for all versions
     median_risk = scaled_df["risk_assessment"].median()
