@@ -9,10 +9,14 @@ import tempfile
 from xmlrpc.client import boolean
 
 import click
+import numpy as np
+import pandas as pd
+from sklearn import preprocessing
 import sqlalchemy as db
 from sqlalchemy.exc import ArgumentError
 from dependency_injector.wiring import Provide, inject
 from dotenv import load_dotenv
+from configuration import Configuration
 from connectors.jira import JiraConnector
 from sqlalchemy.orm import sessionmaker
 from dependency_injector import providers
@@ -32,6 +36,7 @@ from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
 from utils.dirs import TmpDirCopyFilteredWithEnv
 from utils.gitfactory import GitConnectorFactory
+import utils.math as mt
 
 def lint_aliases(raw_aliases) -> boolean:
     try:
@@ -362,6 +367,69 @@ def populate(ctx, skip_versions,
 @inject
 def main():
     pass
+
+#####################################################################
+# For research purposes only                                        #
+#####################################################################
+
+@cli.command()
+@inject
+def topsis( 
+           session = Provide[Container.session], 
+           configuration: Configuration = Provide[Container.configuration]
+           ):
+    excluded_versions = configuration.exclude_versions
+    included_and_current_versions = get_included_and_current_versions_filter(session, configuration)
+
+    # Get the version metrics and the average cyclomatic complexity
+    metrics_statement = session.query(Version, Metric) \
+        .filter(Version.project_id == project.project_id) \
+        .filter(Version.include_filter(included_and_current_versions)) \
+        .filter(Version.exclude_filter(excluded_versions)) \
+        .join(Metric, Metric.version_id == Version.version_id) \
+        .order_by(Version.start_date.asc()).statement
+    logging.debug(metrics_statement)
+    df = pd.read_sql(metrics_statement, session.get_bind())
+
+    # Prepare data for topsis
+    bugs = np.array(df['bugs'].values)
+    bugs = preprocessing.normalize([bugs])
+    bug_velocity = np.array(df['bug_velocity'].values)
+    bug_velocity = preprocessing.normalize([bug_velocity])
+    changes = np.array(df['changes'].values)
+    changes = preprocessing.normalize([changes])
+    avg_team_xp = np.array(df['avg_team_xp'].values)
+    avg_team_xp = preprocessing.normalize([avg_team_xp])
+    lizard_avg_complexity = np.array(df['lizard_avg_complexity'].values)
+    lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
+    code_churn_avg = np.array(df['code_churn_avg'].values)
+    code_churn_avg = preprocessing.normalize([code_churn_avg])
+
+    # create the decision matrix
+    decision_matrix_builder = mt.Math.DecisionMatrixBuilder()\
+        .add_criteria(bugs, "bugs")\
+        .add_alternative(bug_velocity, "bug_velocity")\
+        .add_alternative(changes, "changes")\
+        .add_alternative(avg_team_xp, "avg_team_xp")\
+        .add_alternative(lizard_avg_complexity, "avg_complexity")\
+        .add_alternative(code_churn_avg, "code_churn")
+
+    decision_matrix = decision_matrix_builder.build()
+
+    # Compute topsis
+    ts = mt.Math.TOPSIS(decision_matrix, np.array([1]), np.array([mt.Math.TOPSIS.MIN]))
+    ts.topsis()
+
+    print("**********************")
+    print("* ALTERNATIVE WEIGHT *")
+    print("**********************")
+    for key, value in decision_matrix_builder.alternatives_dict.items():
+        print("* " + key + " : ", ts.get_closeness()[value])
+    print("**********************")
+
+    return ts.get_closeness()
+
+#####################################################################
 
 @inject
 def configure_logging(config = Provide[Container.configuration]) -> None:

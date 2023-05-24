@@ -191,7 +191,7 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
         .add_criteria(bugs, "bugs")\
         .add_alternative(bug_velocity, "bug_velocity")\
         .add_alternative(changes, "changes")\
-        .add_alternative(avg_team_xp, "avg_complexity")\
+        .add_alternative(avg_team_xp, "avg_team_xp")\
         .add_alternative(lizard_avg_complexity, "avg_complexity")\
         .add_alternative(code_churn_avg, "code_churn")
 
