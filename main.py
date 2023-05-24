@@ -420,14 +420,18 @@ def topsis(
     ts = mt.Math.TOPSIS(decision_matrix, np.array([1]), np.array([mt.Math.TOPSIS.MIN]))
     ts.topsis()
 
+    output = {}
+    for key, value in decision_matrix_builder.alternatives_dict.items():
+        output[key] = ts.get_closeness()[value]
+
     print("**********************")
     print("* ALTERNATIVE WEIGHT *")
     print("**********************")
-    for key, value in decision_matrix_builder.alternatives_dict.items():
-        print("* " + key + " : ", ts.get_closeness()[value])
+    for key, value in output.items():
+        print("* " + key + " : ", value)
     print("**********************")
 
-    return ts.get_closeness()
+    return output
 
 #####################################################################
 
