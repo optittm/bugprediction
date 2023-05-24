@@ -2,6 +2,7 @@ from statistics import mean
 import logging
 
 import numpy as np
+from sklearn import preprocessing
 
 class Math():
     nb_decimal_numbers = 2
@@ -56,23 +57,6 @@ class Math():
             self.criteria_dict = None
             self.alternatives_dict = None
 
-        def _normalize(self, matrix: np.ndarray) -> np.ndarray:
-            """
-            Normalize a matrix using L2 norm.
-
-            Args:
-                matrix (np.ndarray): The matrix to normalize.
-
-            Returns:
-                np.ndarray: The normalized matrix.
-            """
-            norms = np.linalg.norm(matrix)
-            # if the vector is norm is 0 return the vector
-            if norms == 0:
-                return matrix
-            normalized_matrix = matrix / norms
-            return normalized_matrix
-
         def add_criteria(self, values: np.ndarray, label: str) -> 'DecisionMatrixBuilder':
             """
             Add a criteria array with its label to the decision matrix.
@@ -84,7 +68,7 @@ class Math():
             Returns:
                 DecisionMatrixBuilder: The updated instance of the DecisionMatrixBuilder.
             """
-            self.criteria.append(self._normalize(values))
+            self.criteria.append(preprocessing.normalize(values))
             self.criteria_label.append(label)
             return self
 
@@ -99,7 +83,7 @@ class Math():
             Returns:
                 DecisionMatrixBuilder: The updated instance of the DecisionMatrixBuilder.
             """
-            self.alternatives.append(self._normalize(values))
+            self.alternatives.append(preprocessing.normalize(values))
             self.alternatives_label.append(label)
             return self
 
