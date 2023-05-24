@@ -56,7 +56,7 @@ class Math():
             self.criteria_dict = None
             self.alternatives_dict = None
 
-        def _normalyze(self, matrix: np.ndarray) -> np.ndarray:
+        def _normalize(self, matrix: np.ndarray) -> np.ndarray:
             """
             Normalize a matrix using L2 norm.
 
@@ -84,7 +84,7 @@ class Math():
             Returns:
                 DecisionMatrixBuilder: The updated instance of the DecisionMatrixBuilder.
             """
-            self.criteria.append(self._normalyze(values))
+            self.criteria.append(self._normalize(values))
             self.criteria_label.append(label)
             return self
 
@@ -99,7 +99,7 @@ class Math():
             Returns:
                 DecisionMatrixBuilder: The updated instance of the DecisionMatrixBuilder.
             """
-            self.alternatives.append(self._normalyze(values))
+            self.alternatives.append(self._normalize(values))
             self.alternatives_label.append(label)
             return self
 
@@ -109,7 +109,13 @@ class Math():
 
             Returns:
                 np.ndarray: The constructed decision matrix.
+
+            Raises:
+                ValueError: If no criteria or alternatives have been added.
             """
+            if not self.criteria or not self.alternatives:
+                raise ValueError("No criteria or alternatives have been added.")
+
             num_criteria = len(self.criteria)
             num_alternatives = len(self.alternatives)
 
