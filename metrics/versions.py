@@ -187,25 +187,21 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     code_churn_avg = np.array(df['code_churn_avg'].values)
     code_churn_avg = preprocessing.normalize([code_churn_avg])
 
-    # Normalize the criteria and the alternative
-    bugs_n = mt.Math.normalize_matrix(bugs)
-    bug_velocity_n = mt.Math.normalize_matrix(bug_velocity)
-    changes_n = mt.Math.normalize_matrix(changes)
-    avg_team_xp_n = mt.Math.normalize_matrix(avg_team_xp)
-    lizard_avg_complexity_n = mt.Math.normalize_matrix(lizard_avg_complexity)
-    code_churn_avg_n = mt.Math.normalize_matrix(code_churn_avg)
+    decision_matrix_builder = mt.Math.DecisionMatrixBuilder()\
+        .add_criteria(bugs, "bugs")\
+        .add_alternative(bug_velocity, "bug_velocity")\
+        .add_alternative(changes, "changes")\
+        .add_alternative(avg_team_xp, "avg_complexity")\
+        .add_alternative(lizard_avg_complexity, "avg_complexity")\
+        .add_alternative(code_churn_avg, "code_churn")
 
-    criteria = np.array([bugs_n])
-    criteria_label = ["bugs"]
-
-    alternative = np.array([bug_velocity_n, changes_n, avg_team_xp_n, lizard_avg_complexity_n, code_churn_avg_n])
-    alternative_label = ["bug_velocity", "changes", "avg_team_xp", "avg_complexity", "code_churn"]
+    decision_matrix = decision_matrix_builder.build()
 
     # Calculate the correlation between the alternatives and the criteria.
-    correlation_matrix, criteria_dict, alternative_dict = mt.Math.calculate_correlation_matrix(criteria, alternative, criteria_label, alternative_label)
-    print("CORRELATION_MATRIX = ", correlation_matrix)
+    # correlation_matrix, criteria_dict, alternative_dict = mt.Math.calculate_correlation_matrix(criteria, alternative, criteria_label, alternative_label)
+    print("DECISION_MATRIX = ", decision_matrix)
 
-    ts = mt.Math.TOPSIS(correlation_matrix, np.array([1]), np.array([mt.Math.TOPSIS.MIN]))
+    ts = mt.Math.TOPSIS(decision_matrix, np.array([1]), np.array([mt.Math.TOPSIS.MIN]))
     ts.topsis()
     print("CLOSENESS = ", ts.get_closeness()) # Weight of the alternatives
     print("CLOSENESS RANK = ", ts.get_ranking()) # Ranking of the criterion
@@ -230,6 +226,7 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
          (scaled_df["lizard_avg_complexity"] * 40) +
          (scaled_df["code_churn_avg"] * 20)
     )
+
 
     # Return risk assessment along with median and max risk scores for all versions
     median_risk = scaled_df["risk_assessment"].median()

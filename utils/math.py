@@ -31,61 +31,103 @@ class Math():
         if (len(values) > 0):
             return round(mean(values), cls.nb_decimal_numbers)
         return 0
-
-    @classmethod
-    def normalize_matrix(cls, matrix):
+    
+    class DecisionMatrixBuilder:
         """
-        Normalize all values of a given matrix using L2 norm.
+        Builder class for creating a decision matrix using correlation coefficients as criteria values.
 
-        Args:
-            matrix (np.ndarray):The input matrix to be normalized.
-
-        Returns:
-            np.ndarray: The normalized matrix with values scaled by the L2 norm.
-
+        Attributes:
+            criteria (List[np.ndarray]): List of criteria arrays.
+            criteria_label (List[str]): List of labels for the criteria.
+            alternatives (List[np.ndarray]): List of alternative arrays.
+            alternatives_label (List[str]): List of labels for the alternatives.
+            matrix (Optional[np.ndarray]): The constructed decision matrix.
+            criteria_dict (Optional[Dict[str, int]]): Dictionary mapping criteria labels to their indices.
+            alternatives_dict (Optional[Dict[str, int]]): Dictionary mapping alternative labels to their indices.
         """
-        norms = np.linalg.norm(matrix)
-        # if the vector is norm is 0 return the vector
-        if norms == 0:
+
+        def __init__(self) -> None:
+            self.criteria = []
+            self.criteria_label = []
+            self.alternatives = []
+            self.alternatives_label = []
+            
+            self.matrix = None
+            self.criteria_dict = None
+            self.alternatives_dict = None
+
+        def _normalyze(self, matrix: np.ndarray) -> np.ndarray:
+            """
+            Normalize a matrix using L2 norm.
+
+            Args:
+                matrix (np.ndarray): The matrix to normalize.
+
+            Returns:
+                np.ndarray: The normalized matrix.
+            """
+            norms = np.linalg.norm(matrix)
+            # if the vector is norm is 0 return the vector
+            if norms == 0:
+                return matrix
+            normalized_matrix = matrix / norms
+            return normalized_matrix
+
+        def add_criteria(self, values: np.ndarray, label: str) -> 'DecisionMatrixBuilder':
+            """
+            Add a criteria array with its label to the decision matrix.
+
+            Args:
+                values (np.ndarray): The array of criteria values.
+                label (str): The label for the criteria.
+
+            Returns:
+                DecisionMatrixBuilder: The updated instance of the DecisionMatrixBuilder.
+            """
+            self.criteria.append(self._normalyze(values))
+            self.criteria_label.append(label)
+            return self
+
+        def add_alternative(self, values: np.ndarray, label: str) -> 'DecisionMatrixBuilder':
+            """
+            Add an alternative array with its label to the decision matrix.
+
+            Args:
+                values (np.ndarray): The array of alternative values.
+                label (str): The label for the alternative.
+
+            Returns:
+                DecisionMatrixBuilder: The updated instance of the DecisionMatrixBuilder.
+            """
+            self.alternatives.append(self._normalyze(values))
+            self.alternatives_label.append(label)
+            return self
+
+        def build(self) -> np.ndarray:
+            """
+            Build and return the constructed decision matrix.
+
+            Returns:
+                np.ndarray: The constructed decision matrix.
+            """
+            num_criteria = len(self.criteria)
+            num_alternatives = len(self.alternatives)
+
+            # Create the decision matrix with zeros
+            matrix = np.zeros((num_alternatives, num_criteria))
+
+            # Fill the decision matrix with criteria values
+            for i in range(num_criteria):
+                for j in range(num_alternatives):
+                    if np.var(self.criteria[i]) != 0 and np.var(self.alternatives) != 0:
+                        matrix[j, i] = np.corrcoef(self.criteria[i], self.alternatives[j])[0, 1]
+
+            self.matrix = matrix
+            self.criteria_dict = {label: i for i, label in enumerate(self.criteria_label)}
+            self.alternatives_dict = {label: i for i, label in enumerate(self.alternatives_label)}
+
             return matrix
-        normalized_matrix = matrix / norms
-        return normalized_matrix
-
-    @classmethod
-    def calculate_correlation_matrix(cls, criteria: np.ndarray, alternative: np.ndarray, criteria_labels: list, alternative_labels: list) -> tuple:
-        """
-        Calculates the correlation matrix between criteria and alternative arrays.
-
-        Args:
-            criteria (list): List of criteria arrays.
-            alternative (list): List of alternative arrays.
-            criteria_labels (list): List of labels for criteria arrays.
-            alternative_labels (list): List of labels for alternative arrays.
-
-        Returns:
-            tuple: A tuple containing the correlation matrix, criteria dictionary, and alternative dictionary.
-                - The correlation matrix is a numpy array representing the correlation between each criteria and alternative.
-                - The criteria dictionary is a dictionary mapping criteria labels to their corresponding row indices in the correlation matrix.
-                - The alternative dictionary is a dictionary mapping alternative labels to their corresponding column indices in the correlation matrix.
         
-        Raises:
-            ValueError: If the number of labels does not match the size of the matrices.
-        """
-        if len(criteria_labels) != len(criteria) or len(alternative_labels) != len(alternative):
-            raise ValueError("Number of labels does not match the size of the matrices.")
-        
-        correlation_matrix = np.zeros((len(criteria), len(alternative)))
-
-        criteria_dict = {label: index for index, label in enumerate(criteria_labels)}
-        alternative_dict = {label: index for index, label in enumerate(alternative_labels)}
-
-        for i in range(len(criteria)):
-            if np.var(criteria[i]) != 0:
-                for j in range(len(alternative)):
-                    if np.var(alternative[j]) != 0:
-                        correlation_matrix[i, j] = np.corrcoef(criteria[i], alternative[j])[0, 1]
-
-        return correlation_matrix, criteria_dict, alternative_dict
     
     class TOPSIS:
         """
