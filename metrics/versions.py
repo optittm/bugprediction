@@ -194,7 +194,7 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     ts.topsis()
 
     alternatives_weight = ts.get_closeness()
-    alternatives_weight = preprocessing.normalize([alternatives_weight])
+    alternatives_weight = alternatives_weight / sum(alternatives_weight)
 
     scaled_df = pd.DataFrame({
         'bug_velocity': bug_velocity[0],
@@ -210,13 +210,12 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     # Set XP to 1 day for all versions that are too short (avoid inf values in dataframe)
     scaled_df['avg_team_xp'] = scaled_df['avg_team_xp'].replace({0:1})
     scaled_df["risk_assessment"] = (
-        (scaled_df["bug_velocity"] * alternatives_weight[0, decision_matrix_builder.alternatives_dict["bug_velocity"]]) +
-         (scaled_df["changes"] * alternatives_weight[0, decision_matrix_builder.alternatives_dict["changes"]]) +
-         (scaled_df["avg_team_xp"] * alternatives_weight[0, decision_matrix_builder.alternatives_dict["avg_team_xp"]]) +
-         (scaled_df["lizard_avg_complexity"] * alternatives_weight[0, decision_matrix_builder.alternatives_dict["avg_complexity"]]) +
-         (scaled_df["code_churn_avg"] * alternatives_weight[0, decision_matrix_builder.alternatives_dict["code_churn"]])
+        (scaled_df["bug_velocity"] * alternatives_weight[decision_matrix_builder.alternatives_dict["bug_velocity"]]) +
+         (scaled_df["changes"] * alternatives_weight[decision_matrix_builder.alternatives_dict["changes"]]) +
+         (scaled_df["avg_team_xp"] * alternatives_weight[decision_matrix_builder.alternatives_dict["avg_team_xp"]]) +
+         (scaled_df["lizard_avg_complexity"] * alternatives_weight[decision_matrix_builder.alternatives_dict["avg_complexity"]]) +
+         (scaled_df["code_churn_avg"] * alternatives_weight[decision_matrix_builder.alternatives_dict["code_churn"]])
     )
-
 
     # Return risk assessment along with median and max risk scores for all versions
     median_risk = scaled_df["risk_assessment"].median()

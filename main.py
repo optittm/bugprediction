@@ -11,6 +11,7 @@ from xmlrpc.client import boolean
 import click
 import numpy as np
 import pandas as pd
+import skcriteria
 from sklearn import preprocessing
 import sqlalchemy as db
 from sqlalchemy.exc import ArgumentError
@@ -20,6 +21,9 @@ from configuration import Configuration
 from connectors.jira import JiraConnector
 from sqlalchemy.orm import sessionmaker
 from dependency_injector import providers
+from skcriteria.madm import similarity
+from skcriteria.pipeline import mkpipe
+from skcriteria.preprocessing import invert_objectives, scalers
 
 from utils.container import Container
 from exceptions.configurationvalidation import ConfigurationValidationException
@@ -416,13 +420,33 @@ def topsis(
 
     decision_matrix = decision_matrix_builder.build()
 
+    # dm = skcriteria.mkdm(decision_matrix, [min], weights=[1])
+    # pipe = mkpipe(
+    #     invert_objectives.NegateMinimize(),
+    #     scalers.VectorScaler(target="matrix"),  # this scaler transform the matrix
+    #     scalers.SumScaler(target="weights"),  # and this transform the weights
+    #     similarity.TOPSIS(),
+    # )
+    # rank = pipe.evaluate(dm)
+    # print(rank)
+    # print(rank.e_.similarity)
+
+    # weight = rank.e_.similarity / sum(rank.e_.similarity)
+    # print(weight)
+
     # Compute topsis
     ts = mt.Math.TOPSIS(decision_matrix, np.array([1]), np.array([mt.Math.TOPSIS.MIN]))
     ts.topsis()
 
+    weight = ts.get_closeness()
+    weight = weight / sum(weight)
+
     output = {}
     for key, value in decision_matrix_builder.alternatives_dict.items():
-        output[key] = ts.get_closeness()[value]
+        output[key] = weight[value]
+
+    total = sum(output.values())
+    print(total)
 
     print("**********************")
     print("* ALTERNATIVE WEIGHT *")
