@@ -128,7 +128,7 @@ class Math():
         based on their similarity to ideal and anti-ideal solutions.
 
         Args:
-            decision_matrix (np.ndarray): The decision matrix representing the performance of alternatives on different criteria.
+            decision_matrix (DecisionMatrixBuilder): The decision matrix representing the performance of alternatives on different criteria.
                                         Shape: (num_alternatives, num_criteria)
                                         Example:
                                         np.array([
@@ -166,6 +166,8 @@ class Math():
         def __init__(self, decision_matrix: "Math.DecisionMatrixBuilder", weights: List, impacts: List) -> None:
             weights = np.array(weights)
             impacts = np.array(impacts)
+            if decision_matrix.matrix is None:
+                decision_matrix = decision_matrix.build()
             if decision_matrix.matrix.ndim != 2:
                 raise ValueError("Decision matrix must be a 2-dimensional array.")
             if weights.ndim != 1 or len(weights) != decision_matrix.matrix.shape[1]:

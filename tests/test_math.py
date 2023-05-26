@@ -10,12 +10,24 @@ from utils.math import Math
 
 class TestTOPSIS(unittest.TestCase):
     def setUp(self):
-        self.decision_matrix = np.array([[3.0, 4.0, 5.0],
+        self.decision_matrix = Math.DecisionMatrixBuilder()
+        self.decision_matrix.matrix = np.array([[3.0, 4.0, 5.0],
                                          [2.0, 5.0, 1.0],
                                          [4.0, 2.0, 3.0],
                                          [1.0, 3.0, 2.0]])
-        self.weights = np.array([0.5, 0.3, 0.2])
-        self.impacts = np.array([Math.TOPSIS.MAX, Math.TOPSIS.MAX, Math.TOPSIS.MIN])
+        self.decision_matrix.criteria_dict = {
+            "C1": 0,
+            "C2": 1,
+            "C3": 2
+        }
+        self.decision_matrix.alternatives_dict = {
+            "A1": 0,
+            "A2": 1,
+            "A3": 2,
+            "A4": 3
+        }
+        self.weights = [0.5, 0.3, 0.2]
+        self.impacts = [Math.TOPSIS.MAX, Math.TOPSIS.MAX, Math.TOPSIS.MIN]
         self.topsis = Math.TOPSIS(self.decision_matrix, self.weights, self.impacts)
         self.topsis.topsis()
 
@@ -89,4 +101,4 @@ class TestDecisionMatrixBuilder(unittest.TestCase):
         matrix = builder.build()
         
         self.assertIsNotNone(matrix)
-        self.assertEqual(matrix.shape, (2, 2))
+        self.assertEqual(matrix.matrix.shape, (2, 2))
