@@ -1,5 +1,6 @@
 from statistics import mean
 import logging
+from typing import List
 
 import numpy as np
 from sklearn import preprocessing
@@ -87,12 +88,12 @@ class Math():
             self.alternatives_label.append(label)
             return self
 
-        def build(self) -> np.ndarray:
+        def build(self) -> 'DecisionMatrixBuilder':
             """
             Build and return the constructed decision matrix.
 
             Returns:
-                np.ndarray: The constructed decision matrix.
+                DecisionMatrixBuilder: The updated instance of the DecisionMatrixBuilder.
 
             Raises:
                 ValueError: If no criteria or alternatives have been added.
@@ -116,7 +117,7 @@ class Math():
             self.criteria_dict = {label: i for i, label in enumerate(self.criteria_label)}
             self.alternatives_dict = {label: i for i, label in enumerate(self.alternatives_label)}
 
-            return matrix
+            return self
         
     
     class TOPSIS:
@@ -162,15 +163,18 @@ class Math():
         MAX = 1
         MIN = -1
 
-        def __init__(self, decision_matrix: np.ndarray, weights: np.ndarray, impacts: np.ndarray) -> None:
-            if decision_matrix.ndim != 2:
+        def __init__(self, decision_matrix: "Math.DecisionMatrixBuilder", weights: List, impacts: List) -> None:
+            weights = np.array(weights)
+            impacts = np.array(impacts)
+            if decision_matrix.matrix.ndim != 2:
                 raise ValueError("Decision matrix must be a 2-dimensional array.")
-            if weights.ndim != 1 or len(weights) != decision_matrix.shape[1]:
+            if weights.ndim != 1 or len(weights) != decision_matrix.matrix.shape[1]:
                 raise ValueError("Weights must be a 1-dimensional array with the same length as the number of criteria.")
-            if impacts.ndim != 1 or len(impacts) != decision_matrix.shape[1]:
+            if impacts.ndim != 1 or len(impacts) != decision_matrix.matrix.shape[1]:
                 raise ValueError("Impacts must be a 1-dimensional array with the same length as the number of criteria.")
             
-            self._decision_matrix = decision_matrix
+            self.matrix_builder = decision_matrix
+            self._decision_matrix = decision_matrix.matrix
             self._weights = weights
             self._impacts = impacts
             # Compute lengths
@@ -356,3 +360,6 @@ class Math():
             """
             ranking = np.argsort(self._closeness)[::-1] + 1
             return ranking
+        
+        def get_coef(self, label: str) -> None:
+            return self._closeness[self.matrix_builder.alternatives_dict[label]]
