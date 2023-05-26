@@ -11,7 +11,6 @@ from xmlrpc.client import boolean
 import click
 import numpy as np
 import pandas as pd
-import skcriteria
 from sklearn import preprocessing
 import sqlalchemy as db
 from sqlalchemy.exc import ArgumentError
@@ -21,9 +20,6 @@ from configuration import Configuration
 from connectors.jira import JiraConnector
 from sqlalchemy.orm import sessionmaker
 from dependency_injector import providers
-from skcriteria.madm import similarity
-from skcriteria.pipeline import mkpipe
-from skcriteria.preprocessing import invert_objectives, scalers
 
 from utils.container import Container
 from exceptions.configurationvalidation import ConfigurationValidationException
