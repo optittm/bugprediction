@@ -363,5 +363,5 @@ class Math():
             ranking = np.argsort(self._closeness)[::-1] + 1
             return ranking
         
-        def get_coef(self, label: str) -> None:
+        def get_coef_from_label(self, label: str) -> None:
             return self._closeness[self.matrix_builder.alternatives_dict[label]]
