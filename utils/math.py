@@ -282,8 +282,6 @@ class Math():
             Returns:
                 None
             """
-            # self._ideal = self._calculte_matrix_extremum(self._impacts)
-            # self._anti_ideal = self._calculte_matrix_extremum(self._impacts * -1)
             self._ideal = Math.calculte_matrix_extremum(self._weighted_decision_matrix, self._impacts)
             self._anti_ideal = Math.calculte_matrix_extremum(self._weighted_decision_matrix, self._impacts * -1)
 
