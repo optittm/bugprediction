@@ -392,17 +392,17 @@ def topsis(
     df = pd.read_sql(metrics_statement, session.get_bind())
 
     # Prepare data for topsis
-    bugs = np.array(df['bugs'].values)
+    bugs = df['bugs'].to_numpy()
     bugs = preprocessing.normalize([bugs])
-    bug_velocity = np.array(df['bug_velocity'].values)
+    bug_velocity = df['bug_velocity'].to_numpy()
     bug_velocity = preprocessing.normalize([bug_velocity])
-    changes = np.array(df['changes'].values)
+    changes = df['changes'].to_numpy()
     changes = preprocessing.normalize([changes])
-    avg_team_xp = np.array(df['avg_team_xp'].values)
+    avg_team_xp = df['avg_team_xp'].to_numpy()
     avg_team_xp = preprocessing.normalize([avg_team_xp])
-    lizard_avg_complexity = np.array(df['lizard_avg_complexity'].values)
+    lizard_avg_complexity = df['lizard_avg_complexity'].to_numpy()
     lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
-    code_churn_avg = np.array(df['code_churn_avg'].values)
+    code_churn_avg = df['code_churn_avg'].to_numpy()
     code_churn_avg = preprocessing.normalize([code_churn_avg])
 
     # create the decision matrix
