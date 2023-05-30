@@ -431,7 +431,7 @@ def topsis(
     print(total)
 
     print("**********************")
-    print("* ALTERNATIVE WEIGHT *")
+    print("* ALTERNATIVES WEIGHTS *")
     print("**********************")
     for key, value in output.items():
         print("* " + key + " : ", value)
