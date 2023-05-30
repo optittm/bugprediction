@@ -167,17 +167,17 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     # # Filter our dataframe based on condition
     # filtered_df = df[condition]
 
-    bugs = np.array(df['bugs'].values)
+    bugs = np.array(df['bugs'].to_numpy())
     bugs = preprocessing.normalize([bugs])
-    bug_velocity = np.array(df['bug_velocity'].values)
+    bug_velocity = np.array(df['bug_velocity'].to_numpy())
     bug_velocity = preprocessing.normalize([bug_velocity])
-    changes = np.array(df['changes'].values)
+    changes = np.array(df['changes'].to_numpy())
     changes = preprocessing.normalize([changes])
-    avg_team_xp = np.array(df['avg_team_xp'].values)
+    avg_team_xp = np.array(df['avg_team_xp'].to_numpy())
     avg_team_xp = preprocessing.normalize([avg_team_xp])
-    lizard_avg_complexity = np.array(df['lizard_avg_complexity'].values)
+    lizard_avg_complexity = np.array(df['lizard_avg_complexity'].to_numpy())
     lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
-    code_churn_avg = np.array(df['code_churn_avg'].values)
+    code_churn_avg = np.array(df['code_churn_avg'].to_numpy())
     code_churn_avg = preprocessing.normalize([code_churn_avg])
 
     scaled_df = pd.DataFrame({

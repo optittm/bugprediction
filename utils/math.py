@@ -211,7 +211,7 @@ class Math():
 
             self._weighted_decision_matrix = weighted_correlation_matrix
 
-        def _calculte_matrix_extremum(self, impatcs: np.ndarray) -> np.ndarray:
+        def _calculte_matrix_extremum(self, impacts: np.ndarray) -> np.ndarray:
             """
             Calculates the matrix extremum (ideal or anti-ideal) based on the weighted decision matrix and impacts.
 
@@ -225,7 +225,7 @@ class Math():
 
             for i in range(self._num_criteria):
                 criteria_weights = self._weighted_decision_matrix[:, i]
-                if impatcs[i] == Math.TOPSIS.MAX:
+                if impacts[i] == Math.TOPSIS.MAX:
                     extremum_value = np.max(criteria_weights)
                 else:
                     extremum_value = np.min(criteria_weights)
