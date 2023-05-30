@@ -89,6 +89,31 @@ class Math():
             extremum_matrix[i] = extremum_value
 
         return extremum_matrix
+    
+    @classmethod
+    def calculate_euclidean_distance(cls, matrix_1: np.ndarray, matrix_2: np.ndarray) -> float:
+        """
+        Calculates the Euclidean distance between two matrices.
+
+        Args:
+            matrix1 (np.ndarray): The first matrix.
+            matrix2 (np.ndarray): The second matrix.
+
+        Returns:
+            float: The Euclidean distance between the two matrices.
+
+        Raises:
+            ValueError: If the two matrices have different shapes.
+        """
+        if matrix_1.shape != matrix_2.shape:
+            raise ValueError("The two matrices must have the same shape")
+        
+        squared_diff = (matrix_1 - matrix_2) ** 2
+        sum_squared_diff = np.sum(squared_diff)
+        euclidean_distance = np.sqrt(sum_squared_diff)
+
+        return euclidean_distance
+
 
     class DecisionMatrixBuilder:
         """
@@ -262,29 +287,6 @@ class Math():
             self._ideal = Math.calculte_matrix_extremum(self._weighted_decision_matrix, self._impacts)
             self._anti_ideal = Math.calculte_matrix_extremum(self._weighted_decision_matrix, self._impacts * -1)
 
-        def _calculate_euclidean_distance(self, matrix_1: np.ndarray, matrix_2: np.ndarray) -> float:
-            """
-            Calculates the Euclidean distance between two matrices.
-
-            Args:
-                matrix1 (np.ndarray): The first matrix.
-                matrix2 (np.ndarray): The second matrix.
-
-            Returns:
-                float: The Euclidean distance between the two matrices.
-
-            Raises:
-                ValueError: If the two matrices have different shapes.
-            """
-            if matrix_1.shape != matrix_2.shape:
-                raise ValueError("The two matrices must have the same shape")
-            
-            squared_diff = (matrix_1 - matrix_2) ** 2
-            sum_squared_diff = np.sum(squared_diff)
-            euclidean_distance = np.sqrt(sum_squared_diff)
-
-            return euclidean_distance
-
         def _euclidean_distances(self) -> None:
             """
             Calculates the Euclidean distances of each alternative to the ideal and anti-ideal matrices.
@@ -296,8 +298,8 @@ class Math():
                 None
             """
             for i in range(self._num_alternative):
-                ideal_distance = self._calculate_euclidean_distance(self._weighted_decision_matrix[i, :], self._ideal)
-                anti_ideal_distance = self._calculate_euclidean_distance(self._weighted_decision_matrix[i, :], self._anti_ideal)
+                ideal_distance = Math.calculate_euclidean_distance(self._weighted_decision_matrix[i, :], self._ideal)
+                anti_ideal_distance = Math.calculate_euclidean_distance(self._weighted_decision_matrix[i, :], self._anti_ideal)
                 self._distances[i, 0] = ideal_distance
                 self._distances[i, 1] = anti_ideal_distance
 
