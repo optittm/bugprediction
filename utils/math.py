@@ -6,9 +6,6 @@ import numpy as np
 from sklearn import preprocessing
 
 class Math():
-    
-    MAX = 1
-    MIN = -1
 
     nb_decimal_numbers = 2
 
@@ -61,34 +58,6 @@ class Math():
             weighted_matrix[:, index] *= weight
 
         return weighted_matrix
-
-    @classmethod
-    def calculte_matrix_extremum(self, matrix: np.ndarray, impacts: list) -> np.ndarray:
-        """
-        Calculates the extremum values for each column of the input matrix based on the provided impacts.
-
-        Args:
-            matrix (np.ndarray): The input matrix.
-            impacts (np.ndarray): An array specifying the type of extremum (maximum or minimum) for each column.
-
-        Returns:
-            np.ndarray: An array containing the extremum values for each column.
-
-        """
-        if len(impacts) != matrix.shape[1]:
-            raise ValueError("Weights must be athe same length as the number of column of the given matrix.")
-        
-        extremum_matrix = np.zeros(len(impacts))
-
-        for i in range(len(impacts)):
-            criteria_weights = matrix[:, i]
-            if impacts[i] == Math.MAX:
-                extremum_value = np.max(criteria_weights)
-            else:
-                extremum_value = np.min(criteria_weights)
-            extremum_matrix[i] = extremum_value
-
-        return extremum_matrix
     
     @classmethod
     def calculate_euclidean_distance(cls, matrix_1: np.ndarray, matrix_2: np.ndarray) -> float:
@@ -241,6 +210,9 @@ class Math():
             _closeness (np.ndarray): The relative closeness of each alternative.
         """
 
+        MAX = 1
+        MIN = -1
+
         def __init__(self, decision_matrix: "Math.DecisionMatrixBuilder", weights: List, impacts: List) -> None:
             weights = np.array(weights)
             impacts = np.array(impacts)
@@ -271,6 +243,30 @@ class Math():
 
             self._distances = np.zeros(shape=(self._num_alternative, 2))
             self._closeness = np.zeros(self._num_alternative)
+
+
+        def _calculate_matrix_extremum(self, impacts: list) -> np.ndarray:
+            """
+            Calculates the extremum values for each column of the input matrix based on the provided impacts.
+
+            Args:
+                impacts (np.ndarray): An array specifying the type of extremum (maximum or minimum) for each column.
+
+            Returns:
+                np.ndarray: An array containing the extremum values for each column.
+
+            """            
+            extremum_matrix = np.zeros(len(impacts))
+
+            for i in range(len(impacts)):
+                criteria_weights = self._weighted_decision_matrix[:, i]
+                if impacts[i] == Math.TOPSIS.MAX:
+                    extremum_value = np.max(criteria_weights)
+                else:
+                    extremum_value = np.min(criteria_weights)
+                extremum_matrix[i] = extremum_value
+
+            return extremum_matrix
         
         def _ideal_best_worst(self) -> None:
             """
@@ -282,8 +278,8 @@ class Math():
             Returns:
                 None
             """
-            self._ideal = Math.calculte_matrix_extremum(self._weighted_decision_matrix, self._impacts)
-            self._anti_ideal = Math.calculte_matrix_extremum(self._weighted_decision_matrix, self._impacts * -1)
+            self._ideal = self._calculate_matrix_extremum(self._impacts)
+            self._anti_ideal = self._calculate_matrix_extremum(self._impacts * -1)
 
         def _euclidean_distances(self) -> None:
             """

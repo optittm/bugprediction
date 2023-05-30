@@ -7,6 +7,45 @@ import numpy as np
 from sklearn import preprocessing
 from utils.math import Math
 
+class TestMath(unittest.TestCase):
+    def setUp(self) -> None:
+        self.matrix = np.array([[3.0, 4.0, 5.0],
+                                [2.0, 5.0, 1.0],
+                                [4.0, 2.0, 3.0],
+                                [1.0, 3.0, 2.0]])
+        self.weights = [0.5, 0.3, 0.2]
+
+    def test_weighted_matrix(self):
+        weighted_matrix = np.array([[1.5, 1.2, 1.0],
+                                    [1.0, 1.5, 0.2],
+                                    [2.0, 0.6, 0.6],
+                                    [0.5, 0.9, 0.4]])
+        np.testing.assert_allclose(Math.weighted_matrix(self.matrix, self.weights), weighted_matrix)
+
+    def test_euclidean_distance_same_matrix(self):
+        matrix = np.array([[1, 2], [3, 4]])
+        expected_distance = 0.0
+
+        distance = Math.calculate_euclidean_distance(matrix, matrix)
+
+        self.assertAlmostEqual(distance, expected_distance)
+
+    def test_euclidean_distance_different_matrices(self):
+        matrix1 = np.array([[1, 2], [3, 4]])
+        matrix2 = np.array([[2, 3], [4, 5]])
+        expected_distance = 2
+
+        distance = Math.calculate_euclidean_distance(matrix1, matrix2)
+
+        self.assertAlmostEqual(distance, expected_distance)
+
+    def test_euclidean_distance_matrices_with_different_shapes(self):
+        matrix1 = np.array([[1, 2, 3], [4, 5, 6]])
+        matrix2 = np.array([[2, 3], [4, 5]])
+        
+        with self.assertRaises(ValueError):
+            Math.calculate_euclidean_distance(matrix1, matrix2)
+
 
 class TestTOPSIS(unittest.TestCase):
     def setUp(self):
@@ -30,13 +69,6 @@ class TestTOPSIS(unittest.TestCase):
         self.impacts = [Math.TOPSIS.MAX, Math.TOPSIS.MAX, Math.TOPSIS.MIN]
         self.topsis = Math.TOPSIS(self.decision_matrix, self.weights, self.impacts)
         self.topsis.topsis()
-
-    def test_weighted_matrix(self):
-        weighted_matrix = np.array([[1.5, 1.2, 1.0],
-                                    [1.0, 1.5, 0.2],
-                                    [2.0, 0.6, 0.6],
-                                    [0.5, 0.9, 0.4]])
-        np.testing.assert_allclose(self.topsis._weighted_decision_matrix, weighted_matrix)
 
     def test_ideal_best_worst(self):
         ideal_solution = np.array([2.0, 1.5, 0.2])
