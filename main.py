@@ -417,7 +417,7 @@ def topsis(
     decision_matrix = decision_matrix_builder.build()
 
     # Compute topsis
-    ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.TOPSIS.MIN])
+    ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.MIN])
     ts.topsis()
 
     weight = ts.get_closeness()
