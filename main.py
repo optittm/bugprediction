@@ -1,3 +1,4 @@
+from collections import namedtuple
 import os
 import re
 import sys
@@ -7,11 +8,13 @@ import platform
 import subprocess
 import tempfile
 from xmlrpc.client import boolean
+import matplotlib.pyplot as plt
 
 import click
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 import sqlalchemy as db
 from sqlalchemy.exc import ArgumentError
 from dependency_injector.wiring import Provide, inject
@@ -20,6 +23,7 @@ from configuration import Configuration
 from connectors.jira import JiraConnector
 from sqlalchemy.orm import sessionmaker
 from dependency_injector import providers
+from scipy.stats import spearmanr, weightedtau, kendalltau, chisquare, pearsonr, pointbiserialr
 
 from utils.container import Container
 from exceptions.configurationvalidation import ConfigurationValidationException
@@ -416,12 +420,15 @@ def topsis(
 
     decision_matrix = decision_matrix_builder.build()
 
+    print("DECISION MATRIXE = ", decision_matrix.matrix)
+
     # Compute topsis
     ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.TOPSIS.MIN])
     ts.topsis()
 
     weight = ts.get_closeness()
     weight = weight / sum(weight)
+    print(weight)
 
     output = {}
     for key, value in decision_matrix_builder.alternatives_dict.items():
@@ -438,6 +445,147 @@ def topsis(
     print("**********************")
 
     return output
+
+
+@cli.command()
+@inject
+def topsis_correlation_analyse(session=Provide[Container.session], configuration=Provide[Container.configuration]):
+    excluded_versions = configuration.exclude_versions
+    included_and_current_versions = get_included_and_current_versions_filter(session, configuration)
+
+    # Get the version metrics and the average cyclomatic complexity
+    metrics_statement = (
+        session.query(Version, Metric)
+        .filter(Version.project_id == project.project_id)
+        .filter(Version.include_filter(included_and_current_versions))
+        .filter(Version.exclude_filter(excluded_versions))
+        .join(Metric, Metric.version_id == Version.version_id)
+        .order_by(Version.start_date.asc()).statement
+    )
+    logging.debug(metrics_statement)
+    df = pd.read_sql(metrics_statement, session.get_bind())
+
+    # Prepare data for topsis
+    alternative_data = {
+        'bug_velocity': preprocessing.normalize([df['bug_velocity'].to_numpy()]),
+        'changes': preprocessing.normalize([df['changes'].to_numpy()]),
+        'avg_team_xp': preprocessing.normalize([df['avg_team_xp'].to_numpy()]),
+        'avg_complexity': preprocessing.normalize([df['lizard_avg_complexity'].to_numpy()]),
+        'code_churn': preprocessing.normalize([df['code_churn_avg'].to_numpy()])
+    }
+    criteria_data = {
+        'bugs': preprocessing.normalize([df['bugs'].to_numpy()])
+    }
+
+    # Create the decision matrix
+    decision_matrix_builder = mt.Math.DecisionMatrixBuilder()
+
+    for criterion, data in criteria_data.items():
+        decision_matrix_builder.add_criteria(data, criterion)
+
+    for alternative, data in alternative_data.items():
+        decision_matrix_builder.add_alternative(data, alternative)
+
+    # Correlation methods
+    correlation_methods = [pearsonr, spearmanr, kendalltau, weightedtau, pointbiserialr]
+
+    # Init data
+    BestCorrelation = namedtuple('BestCorrelation', ['value', 'method'])
+    num_alternatives = len(alternative_data)
+    num_criteria = len(criteria_data)
+    best_correlation_by_alternative = [[BestCorrelation(0, None)] * num_criteria for _ in range(num_alternatives)]
+
+    for correlation_method in correlation_methods:
+        # Build the decision matrix
+        matrix = decision_matrix_builder.build(correlation_method).matrix
+        # Analyze data
+        for i in range(num_alternatives):
+            for j in range(num_criteria):
+                current_value = abs(best_correlation_by_alternative[i][j].value)
+                new_value = abs(matrix[i][j])
+                if current_value < new_value:
+                    best_correlation_by_alternative[i][j] = BestCorrelation(matrix[i][j], correlation_method.__name__)
+    
+    return best_correlation_by_alternative
+
+
+@cli.command()
+@inject
+def r_two( 
+    session = Provide[Container.session], 
+    configuration: Configuration = Provide[Container.configuration]
+):
+    excluded_versions = configuration.exclude_versions
+    included_and_current_versions = get_included_and_current_versions_filter(session, configuration)
+
+    # Get the version metrics and the average cyclomatic complexity
+    metrics_statement = session.query(Version, Metric) \
+        .filter(Version.project_id == project.project_id) \
+        .filter(Version.include_filter(included_and_current_versions)) \
+        .filter(Version.exclude_filter(excluded_versions)) \
+        .join(Metric, Metric.version_id == Version.version_id) \
+        .order_by(Version.start_date.asc()).statement
+    logging.debug(metrics_statement)
+    df = pd.read_sql(metrics_statement, session.get_bind())
+
+    # Prepare data
+    version_end = df["end_date"]
+    bugs = df['bugs'].to_numpy()
+    # bugs = preprocessing.normalize([bugs])
+    bug_velocity = df['bug_velocity'].to_numpy()
+    bug_velocity = preprocessing.normalize([bug_velocity])
+    changes = df['changes'].to_numpy()
+    changes = preprocessing.normalize([changes])
+    avg_team_xp = df['avg_team_xp'].to_numpy()
+    avg_team_xp = preprocessing.normalize([avg_team_xp])
+    lizard_avg_complexity = df['lizard_avg_complexity'].to_numpy()
+    lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
+    code_churn_avg = df['code_churn_avg'].to_numpy()
+    code_churn_avg = preprocessing.normalize([code_churn_avg])
+
+    version_end_date = pd.to_datetime(version_end)
+    
+    even_index_version_end_date = version_end_date.to_numpy()[::2]
+    odd_index_version_end_date = version_end_date.to_numpy()[1::2]
+    
+    even_index_bugs = bugs[::2]
+    odd_index_bugs = bugs[1::2]
+
+    X_1 = even_index_version_end_date.astype(int)
+    X_2 = odd_index_version_end_date.astype(int)
+    Y_1 = even_index_bugs
+    Y_2 = odd_index_bugs
+    norm_X_1 = np.linalg.norm(X_1)
+    norm_X_2 = np.linalg.norm(X_2)
+    norm_Y_1 = np.linalg.norm(Y_1)
+    norm_Y_2 = np.linalg.norm(Y_2)
+    normed_X_1 = X_1 / norm_X_1
+    normed_Y_1 = Y_1 / norm_Y_1
+    normed_X_2 = X_2 / norm_X_2
+    normed_Y_2 = Y_2 / norm_Y_2
+
+    for i in range(1, 5):
+        degree = i
+        print("DEGREE = ", degree)
+
+        coefficients = np.polyfit(normed_X_1, normed_Y_1, degree)
+
+        Y_predi = []
+        for x in normed_X_2:
+            Y_predi.append(np.polyval(coefficients, x))
+
+        # Calcul du RMSE
+        rmse = np.sqrt(mean_squared_error(normed_Y_2, Y_predi))
+        print("RMSE:", rmse)
+
+        # Calcul du MAE
+        mae = mean_absolute_error(normed_Y_2, Y_predi)
+        print("MAE:", mae)
+
+
+    # print("coef = ", coefficients)
+    # print("der coef = ", derivative_coefficients)
+
 
 #####################################################################
 
