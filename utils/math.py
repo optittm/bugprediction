@@ -165,26 +165,6 @@ class Math():
                     if np.var(self.criteria[i]) != 0 and np.var(self.alternatives) != 0:
                         c = self.criteria[i][0]
                         a = self.alternatives[j][0]
-                        # if np.all(c == 0) or np.all(a == 0):
-                        #     matrix[j, i] = 0.0
-                        # else:
-                            # Normalize c and a
-                            # c_sum = sum(c)
-                            # a_sum = sum(a)
-                            # c_normalized = c / c_sum if c_sum != 0 else c
-                            # a_normalized = a / a_sum if a_sum != 0 else a
-                            # print(sum(c_normalized), sum(a_normalized))
-                            # c = np.sort(self.criteria[i][0])
-                            # a = np.sort(self.alternatives[j][0])
-                            # matrix[j, i] = np.corrcoef(c, a)[0, 1]      # Pearson
-                            # matrix[j, i] = spearmanr(c, a).statistic    # Spearmanr
-                            # matrix[j, i] = kendalltau(c, a).statistic   # Kendall
-                            # matrix[j, i] = weightedtau(c, a).statistic  # quadratiques (CQR)
-                            # matrix[j, i] = chisquare(a_normalized, c_normalized).statistic    # chi2
-
-                            # Apply continuity correction
-                            # f_exp = a_normalized + 0.5
-                            # f2_exp = c_normalized + 0.5
                         matrix[j, i] = corelation(c, a).statistic
 
             self.matrix = matrix
