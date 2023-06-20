@@ -144,9 +144,9 @@ class SurveyConnector:
                 if not self.comment_exists(comment):
                     self.session.add(comment)
             self.session.commit()
-            logging.info("Comments added to database")
+            logging.info("Survey: Comments added to database")
         except Exception as e:
-            logging.error("An error occurred while saving comments")
+            logging.error("Survey: An error occurred while saving comments")
             logging.error(str(e))
 
     def comment_exists(self, comment):
