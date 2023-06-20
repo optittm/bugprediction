@@ -12,9 +12,25 @@ class SurveyConnectorTests(unittest.TestCase):
         # Mock response data
         response_data = {
             "results": [
-                {"id": 1, "comment": "First comment"},
-                {"id": 2, "comment": "Second comment"}
-            ],
+            {
+                "id": 1, 
+                "project_name": "project1",
+                "user_id": "uuid1", 
+                "timestamp": "timestamp1", 
+                "feature_url": "url1", 
+                "rating": "5",
+                "comment": "First comment"
+            },
+            {
+                "id": 2, 
+                "project_name": "project2",
+                "user_id": "uuid2", 
+                "timestamp": "timestamp2", 
+                "feature_url": "url2", 
+                "rating": "4",
+                "comment": "Second comment"
+            },
+        ],
             "page_size": 2
         }
 
@@ -31,9 +47,25 @@ class SurveyConnectorTests(unittest.TestCase):
         # Mock response data
         response_data = {
             "results": [
-                {"id": 1, "comment": "First comment"},
-                {"id": 2, "comment": "Second comment"}
-            ],
+            {
+                "id": 1, 
+                "project_name": "project1",
+                "user_id": "uuid1", 
+                "timestamp": "timestamp1", 
+                "feature_url": "url1", 
+                "rating": "5",
+                "comment": "First comment"
+            },
+            {
+                "id": 2, 
+                "project_name": "project2",
+                "user_id": "uuid2", 
+                "timestamp": "timestamp2", 
+                "feature_url": "url2", 
+                "rating": "4",
+                "comment": "Second comment"
+            },
+        ],
             "page_size": 2
         }
 
