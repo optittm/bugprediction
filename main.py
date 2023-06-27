@@ -412,7 +412,14 @@ def topsis(
     for alternative, data in alternative_data.items():
         decision_matrix_builder.add_alternative(data, alternative)
 
+    methods = []
+    for method in configuration.topsis_corr_method:
+        methods.append(mt.Math.CorrelationCalculator.get_correlation_methods_from_name(method))
+    
+    decision_matrix_builder.set_correlation_methods(methods)
+
     decision_matrix = decision_matrix_builder.build()
+    print(decision_matrix.matrix)
 
     # Compute topsis
     ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.TOPSIS.MAX])
