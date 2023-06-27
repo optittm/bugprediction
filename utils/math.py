@@ -84,6 +84,20 @@ class Math():
 
         return euclidean_distance
 
+    @staticmethod
+    def get_correlation_methods_from_name(correlation_name):
+        correlation_mapping = {
+            'pearson': stats.pearsonr,
+            'spearman': stats.spearmanr,
+            'kendall': stats.kendalltau,
+            'weighted': stats.weightedtau
+            # Ajouter d'autres méthodes de corrélation au besoin
+        }
+
+        try:
+            return correlation_mapping[correlation_name]
+        except:
+            raise ValueError(f"Invalid correlation method: {correlation_name}")
 
     class CorrelationCalculator:
         """
@@ -110,21 +124,6 @@ class Math():
                 List[float]: The correlation coefficients calculated using different methods.
             """
             return [abs(method(x, y).statistic) for method in self.methods]
-        
-        @staticmethod
-        def get_correlation_methods_from_name(correlation_name):
-            correlation_mapping = {
-                'pearson': stats.pearsonr,
-                'spearman': stats.spearmanr,
-                'kendall': stats.kendalltau,
-                'weighted': stats.weightedtau
-                # Ajouter d'autres méthodes de corrélation au besoin
-            }
-
-            try:
-                return correlation_mapping[correlation_name]
-            except:
-                raise ValueError(f"Invalid correlation method: {correlation_name}")
 
     class DecisionMatrixBuilder:
         """

@@ -414,7 +414,7 @@ def topsis(
 
     methods = []
     for method in configuration.topsis_corr_method:
-        methods.append(mt.Math.CorrelationCalculator.get_correlation_methods_from_name(method))
+        methods.append(mt.Math.get_correlation_methods_from_name(method))
     
     decision_matrix_builder.set_correlation_methods(methods)
 
