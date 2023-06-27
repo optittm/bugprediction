@@ -4,6 +4,7 @@ from typing import List
 
 import numpy as np
 from sklearn import preprocessing
+from scipy import stats
 
 class Math():
 
@@ -84,6 +85,32 @@ class Math():
         return euclidean_distance
 
 
+    class CorrelationCalculator:
+        """
+        Class for calculating correlation coefficients using different methods.
+
+        Attributes:
+            methods (List[Callable]): List of correlation coefficient methods.
+        """
+
+        def __init__(self, methods=None):
+            if methods is None:
+                methods = [stats.pearsonr, stats.spearmanr, stats.kendalltau, stats.weightedtau]
+            self.methods = methods
+
+        def calculate(self, x, y):
+            """
+            Calculate the correlation coefficients between two arrays using different methods.
+
+            Args:
+                x (np.ndarray): The first array.
+                y (np.ndarray): The second array.
+
+            Returns:
+                List[float]: The correlation coefficients calculated using different methods.
+            """
+            return [abs(method(x, y).statistic) for method in self.methods]
+
     class DecisionMatrixBuilder:
         """
         Builder class for creating a decision matrix using correlation coefficients as criteria values.
@@ -103,7 +130,9 @@ class Math():
             self.criteria_label = []
             self.alternatives = []
             self.alternatives_label = []
-            
+
+            self.correlation_calculator = Math.CorrelationCalculator()
+
             self.matrix = None
             self.criteria_dict = None
             self.alternatives_dict = None
@@ -137,7 +166,22 @@ class Math():
             self.alternatives.append(preprocessing.normalize(values))
             self.alternatives_label.append(label)
             return self
+        
+        def set_correlation_methods(self, correlation_methods) -> 'DecisionMatrixBuilder':
+            """
+            Set the correlation methods to be used for calculating the decision matrix.
 
+            Args:
+                correlation_methods (List[str] or str): List of correlation method names or a single method name.
+
+            Returns:
+                DecisionMatrixBuilder: The updated instance of the DecisionMatrixBuilder.
+            """
+            if isinstance(correlation_methods, str):
+                correlation_methods = [correlation_methods]
+            self.correlation_calculator.methods = correlation_methods
+            return self
+        
         def build(self) -> 'DecisionMatrixBuilder':
             """
             Build and return the constructed decision matrix.
@@ -157,11 +201,11 @@ class Math():
             # Create the decision matrix with zeros
             matrix = np.zeros((num_alternatives, num_criteria))
 
-            # Fill the decision matrix with criteria values
             for i in range(num_criteria):
                 for j in range(num_alternatives):
-                    if np.var(self.criteria[i]) != 0 and np.var(self.alternatives) != 0:
-                        matrix[j, i] = np.corrcoef(self.criteria[i], self.alternatives[j])[0, 1]
+                    corr_values = self.correlation_calculator.calculate(self.criteria[i][0], self.alternatives[j][0])
+                    max_corr_value = max(corr_values)
+                    matrix[j, i] = max_corr_value
 
             self.matrix = matrix
             self.criteria_dict = {label: i for i, label in enumerate(self.criteria_label)}
