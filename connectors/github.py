@@ -4,7 +4,7 @@ import github
 
 from sqlalchemy import desc, update
 
-import models
+import models                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
 from models.issue import Issue
 from models.version import Version
 from github import Github
@@ -47,6 +47,15 @@ class GitHubConnector(GitConnector):
         except github.GithubException.RateLimitExceededException:
             sleep(self.configuration.retry_delay)
             self._get_releases(all, order_by, sort)
+
+    def _get_stars(self):
+        return self.remote.stargazers_count
+    
+    def _get_forks(self):
+        return self.remote.forks_count
+    
+    def _get_watches(self):
+        return self.remote.subscribers_count
         
     @timeit
     def create_issues(self):
@@ -117,6 +126,10 @@ class GitHubConnector(GitConnector):
         logging.info('GitHubConnector: create_versions')
         releases = self._get_releases()
         self._clean_project_existing_versions()
+
+        stars = self._get_stars()
+        forks = self._get_forks()
+        watches  = self._get_watches()
 
         versions = []
         previous_release_published_at = self._get_first_commit_date()

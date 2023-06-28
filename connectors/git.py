@@ -189,3 +189,15 @@ class GitConnector(ABC):
     @abstractmethod
     def _get_releases(self, all, order_by, sort):
         raise NotImplementedError
+    
+    @abstractmethod
+    def _get_stars(self):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def _get_forks(self):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def _get_watches(self):
+        raise NotImplementedError
