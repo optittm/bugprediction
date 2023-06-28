@@ -251,11 +251,19 @@ def info(ctx, configuration = Provide[Container.configuration], session = Provid
 @click.pass_context
 @inject
 def check(ctx, configuration = Provide[Container.configuration],
-          git_factory_provider = Provide[Container.git_factory_provider.provider]):
+          git_factory_provider = Provide[Container.git_factory_provider.provider],
+             jira_connector_provider = Provide[Container.jira_connector_provider.provider],
+             glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
     logging.info('created temporary directory: ' + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
+
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == 'jira':
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+        elif source_bugs.strip() == 'glpi':
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
 
     source_bugs_check(configuration)
     instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
@@ -283,7 +291,11 @@ def populate(ctx, skip_versions,
              survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Populate the database with the provided configuration"""
 
-    
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == 'jira':
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+        elif source_bugs.strip() == 'glpi':
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
@@ -292,7 +304,6 @@ def populate(ctx, skip_versions,
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
     git = instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
-
     for source_bugs in configuration.source_bugs:
         if source_bugs.strip() == 'jira':
             # Populate issue table in database with Jira issues
