@@ -19,6 +19,8 @@ class SurveyConnector:
         self.configuration = configuration
         self.session = session
 
+        self.verify_connection()
+
     def populate_comments(self):
         """
         Retrieve comments and save them to the database.
@@ -160,3 +162,21 @@ class SurveyConnector:
             True if the comment exists, False otherwise.
         """
         return self.session.query(Comment).filter_by(comment_id=comment.comment_id).first() is not None
+
+    def verify_connection(self):
+        try:
+            response = requests.head(f"{self.configuration.survey_back_api_url}/comments")
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            # This error occurs when the method is not allowed for the called route
+            # It means the server is reachable
+            # So we don't raise the status error
+            if e.response.status_code == 405:
+                return True
+            else:
+                raise e
+        except requests.ConnectionError:
+            logging.error("Survey API is unreachable.")
+            raise ConnectionError("Survey API is unreachable.")
+
+        return True
