@@ -171,12 +171,8 @@ class SurveyConnector:
             # This error occurs when the method is not allowed for the called route
             # It means the server is reachable
             # So we don't raise the status error
-            if e.response.status_code == 405:
-                return True
-            else:
+            if e.response.status_code != 405:
                 raise e
         except requests.ConnectionError:
             logging.error("Survey API is unreachable.")
             raise ConnectionError("Survey API is unreachable.")
-
-        return True

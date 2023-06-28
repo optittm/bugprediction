@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 from unittest.mock import MagicMock, patch
 from connectors.survey import SurveyConnector
 
@@ -6,6 +7,11 @@ class SurveyConnectorTests(unittest.TestCase):
     def setUp(self):
         self.configuration = MagicMock()
         self.session = MagicMock()
+
+        # Patch the 'requests' module in SurveyConnector
+        patcher = mock.patch('connectors.survey.requests')
+        self.mock_requests = patcher.start()
+
         self.connector = SurveyConnector(self.configuration, self.session)
 
     def test_get_all_comments(self):
