@@ -199,5 +199,5 @@ class GitConnector(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def _get_watches(self):
+    def _get_subscribers(self):
         raise NotImplementedError
