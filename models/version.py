@@ -23,6 +23,8 @@ class Version(Base):
     end_date = Column(DateTime)
     # Number of stars in the version
     stars = Column(Integer)
+    # Number of subscribers in the version
+    subscribers = Column(Integer)
     # Number of bugs in the version
     bugs = Column(Integer)
     # Rough estimate of the volume of changes

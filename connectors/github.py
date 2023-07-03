@@ -1,7 +1,6 @@
 import logging
 from time import sleep, time
 import github
-import pytz
 
 from sqlalchemy import desc, update
 
@@ -52,27 +51,47 @@ class GitHubConnector(GitConnector):
             sleep(self.configuration.retry_delay)
             self._get_releases(all, order_by, sort)
 
-    def _get_stars(self, since: datetime, to: datetime):
+    def _get_stars(self, since: datetime = None, to: datetime = None) -> int:
         """
         Get stars of GitHub repository
         """
-        stars = self.remote.get_stargazers_with_dates()
+        stars = list(self.remote.get_stargazers_with_dates())
 
-        return len(
-            list(
-                filter(
-                    lambda star: str(star.starred_at) >= str(since)
-                    and str(star.starred_at) <= str(to),
-                    stars,
-                )
+        if str(since) < str(stars[0].starred_at):
+            filtered_stars = filter(
+                lambda star: str(star.starred_at) >= str(since)
+                and str(star.starred_at) <= str(to),
+                stars,
             )
-        )
+
+        else:
+            filtered_stars = filter(
+                lambda star: str(star.starred_at) <= str(to),
+                stars,
+            )
+
+        return len(list(filtered_stars))
 
     def _get_forks(self):
-        return self.remote.forks_count
+        return self.remote.get_forks().totalCount
 
-    def _get_subscribers(self):
-        return self.remote.subscribers_count
+    def _get_subscribers(self, since: datetime = None, to: datetime = None) -> int:
+        subscribers = list(self.remote.get_subscribers())
+
+        # Release date is before the first watch
+        if str(since) < str(subscribers[0].created_at):
+            filtered_subscribers = filter(
+                lambda subscriber: str(subscriber.created_at) >= str(since)
+                and str(subscriber.created_at) <= str(to),
+                subscribers,
+            )
+        else:
+            filtered_subscribers = filter(
+                lambda subscriber: str(subscriber.created_at) <= str(to),
+                subscribers,
+            )
+
+        return len(list(filtered_subscribers))
 
     @timeit
     def create_issues(self):
@@ -156,10 +175,7 @@ class GitHubConnector(GitConnector):
         self._clean_project_existing_versions()
 
         forks = self._get_forks()
-        subscribers = self._get_subscribers()
-
         print("FORKS :", forks)
-        print("SUBSCRIBERS :", subscribers)
 
         versions = []
         previous_release_published_at = self._get_first_commit_date()
@@ -175,6 +191,9 @@ class GitHubConnector(GitConnector):
                     stars=self._get_stars(
                         since=previous_release_published_at, to=release.published_at
                     ),
+                    subscribers=self._get_subscribers(
+                        since=previous_release_published_at, to=release.published_at
+                    ),
                 )
             )
             previous_release_published_at = release.published_at
@@ -188,6 +207,9 @@ class GitHubConnector(GitConnector):
                 start_date=previous_release_published_at,
                 end_date=datetime.datetime.now(),
                 stars=self._get_stars(
+                    since=previous_release_published_at, to=datetime.datetime.now()
+                ),
+                subscribers=self._get_subscribers(
                     since=previous_release_published_at, to=datetime.datetime.now()
                 ),
             )
