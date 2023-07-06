@@ -6,8 +6,8 @@ import numpy as np
 from sklearn import preprocessing
 from scipy import stats
 
-class Math():
 
+class Math:
     nb_decimal_numbers = 2
 
     @classmethod
@@ -17,9 +17,9 @@ class Math():
 
     @classmethod
     def get_rounded_rate(cls, value, total):
-        rate = (1. * value / total) * 100
+        rate = (1.0 * value / total) * 100
         return round(rate, cls.nb_decimal_numbers)
-    
+
     @classmethod
     def get_rounded_divide(cls, dividend, divisor):
         try:
@@ -29,13 +29,13 @@ class Math():
             return None
         else:
             return quotient
-            
+
     @classmethod
     def get_rounded_mean_safe(cls, values):
-        if (len(values) > 0):
+        if len(values) > 0:
             return round(mean(values), cls.nb_decimal_numbers)
         return 0
-    
+
     @classmethod
     def weighted_matrix(cls, matrix: np.ndarray, weights: list) -> np.ndarray:
         """
@@ -51,17 +51,21 @@ class Math():
 
         """
         if len(weights) != matrix.shape[1]:
-            raise ValueError("Weights must be the same length as the number of column of the given matrix.")
-        
+            raise ValueError(
+                "Weights must be the same length as the number of column of the given matrix."
+            )
+
         weighted_matrix = matrix.copy()
 
         for index, weight in enumerate(weights):
             weighted_matrix[:, index] *= weight
 
         return weighted_matrix
-    
+
     @classmethod
-    def calculate_euclidean_distance(cls, matrix_1: np.ndarray, matrix_2: np.ndarray) -> float:
+    def calculate_euclidean_distance(
+        cls, matrix_1: np.ndarray, matrix_2: np.ndarray
+    ) -> float:
         """
         Calculates the Euclidean distance between two matrices.
 
@@ -77,7 +81,7 @@ class Math():
         """
         if matrix_1.shape != matrix_2.shape:
             raise ValueError("The two matrices must have the same shape")
-        
+
         squared_diff = (matrix_1 - matrix_2) ** 2
         sum_squared_diff = np.sum(squared_diff)
         euclidean_distance = np.sqrt(sum_squared_diff)
@@ -87,10 +91,10 @@ class Math():
     @staticmethod
     def get_correlation_methods_from_name(correlation_name):
         correlation_mapping = {
-            'pearson': stats.pearsonr,
-            'spearman': stats.spearmanr,
-            'kendall': stats.kendalltau,
-            'weighted': stats.weightedtau
+            "pearson": stats.pearsonr,
+            "spearman": stats.spearmanr,
+            "kendall": stats.kendalltau,
+            "weighted": stats.weightedtau
             # Ajouter d'autres méthodes de corrélation au besoin
         }
 
@@ -109,7 +113,12 @@ class Math():
 
         def __init__(self, methods=None):
             if methods is None:
-                methods = [stats.pearsonr, stats.spearmanr, stats.kendalltau, stats.weightedtau]
+                methods = [
+                    stats.pearsonr,
+                    stats.spearmanr,
+                    stats.kendalltau,
+                    stats.weightedtau,
+                ]
             self.methods = methods
 
         def calculate(self, x, y):
@@ -151,7 +160,9 @@ class Math():
             self.criteria_dict = None
             self.alternatives_dict = None
 
-        def add_criteria(self, values: np.ndarray, label: str) -> 'DecisionMatrixBuilder':
+        def add_criteria(
+            self, values: np.ndarray, label: str
+        ) -> "DecisionMatrixBuilder":
             """
             Add a criteria array with its label to the decision matrix.
 
@@ -166,7 +177,9 @@ class Math():
             self.criteria_label.append(label)
             return self
 
-        def add_alternative(self, values: np.ndarray, label: str) -> 'DecisionMatrixBuilder':
+        def add_alternative(
+            self, values: np.ndarray, label: str
+        ) -> "DecisionMatrixBuilder":
             """
             Add an alternative array with its label to the decision matrix.
 
@@ -180,8 +193,10 @@ class Math():
             self.alternatives.append(preprocessing.normalize(values))
             self.alternatives_label.append(label)
             return self
-        
-        def set_correlation_methods(self, correlation_methods) -> 'DecisionMatrixBuilder':
+
+        def set_correlation_methods(
+            self, correlation_methods
+        ) -> "DecisionMatrixBuilder":
             """
             Set the correlation methods to be used for calculating the decision matrix.
 
@@ -195,8 +210,8 @@ class Math():
                 correlation_methods = [correlation_methods]
             self.correlation_calculator.methods = correlation_methods
             return self
-        
-        def build(self) -> 'DecisionMatrixBuilder':
+
+        def build(self) -> "DecisionMatrixBuilder":
             """
             Build and return the constructed decision matrix.
 
@@ -217,17 +232,24 @@ class Math():
 
             for i in range(num_criteria):
                 for j in range(num_alternatives):
-                    corr_values = self.correlation_calculator.calculate(self.criteria[i][0], self.alternatives[j][0])
+                    corr_values = self.correlation_calculator.calculate(
+                        self.criteria[i][0], self.alternatives[j][0]
+                    )
                     max_corr_value = max(corr_values)
+                    if np.isnan(max_corr_value):
+                        max_corr_value = 0
                     matrix[j, i] = max_corr_value
 
             self.matrix = matrix
-            self.criteria_dict = {label: i for i, label in enumerate(self.criteria_label)}
-            self.alternatives_dict = {label: i for i, label in enumerate(self.alternatives_label)}
+            self.criteria_dict = {
+                label: i for i, label in enumerate(self.criteria_label)
+            }
+            self.alternatives_dict = {
+                label: i for i, label in enumerate(self.alternatives_label)
+            }
 
             return self
-        
-    
+
     class TOPSIS:
         """
         Implementation of the TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution) algorithm.
@@ -271,7 +293,12 @@ class Math():
         MAX = 1
         MIN = -1
 
-        def __init__(self, decision_matrix: "Math.DecisionMatrixBuilder", weights: List, impacts: List) -> None:
+        def __init__(
+            self,
+            decision_matrix: "Math.DecisionMatrixBuilder",
+            weights: List,
+            impacts: List,
+        ) -> None:
             weights = np.array(weights)
             impacts = np.array(impacts)
             if decision_matrix.matrix is None:
@@ -279,10 +306,14 @@ class Math():
             if decision_matrix.matrix.ndim != 2:
                 raise ValueError("Decision matrix must be a 2-dimensional array.")
             if weights.ndim != 1 or len(weights) != decision_matrix.matrix.shape[1]:
-                raise ValueError("Weights must be a 1-dimensional array with the same length as the number of criteria.")
+                raise ValueError(
+                    "Weights must be a 1-dimensional array with the same length as the number of criteria."
+                )
             if impacts.ndim != 1 or len(impacts) != decision_matrix.matrix.shape[1]:
-                raise ValueError("Impacts must be a 1-dimensional array with the same length as the number of criteria.")
-            
+                raise ValueError(
+                    "Impacts must be a 1-dimensional array with the same length as the number of criteria."
+                )
+
             self.matrix_builder = decision_matrix
             self._decision_matrix = decision_matrix.matrix
             self._weights = weights
@@ -302,7 +333,6 @@ class Math():
             self._distances = np.zeros(shape=(self._num_alternative, 2))
             self._closeness = np.zeros(self._num_alternative)
 
-
         def _calculate_matrix_extremum(self, impacts: list) -> np.ndarray:
             """
             Calculates the extremum values for each column of the input matrix based on the provided impacts.
@@ -313,7 +343,7 @@ class Math():
             Returns:
                 np.ndarray: An array containing the extremum values for each column.
 
-            """            
+            """
             extremum_matrix = np.zeros(len(impacts))
 
             for i in range(len(impacts)):
@@ -325,7 +355,7 @@ class Math():
                 extremum_matrix[i] = extremum_value
 
             return extremum_matrix
-        
+
         def _ideal_best_worst(self) -> None:
             """
             Calculates the ideal and anti-ideal matrices based on the impacts.
@@ -350,8 +380,12 @@ class Math():
                 None
             """
             for i in range(self._num_alternative):
-                ideal_distance = Math.calculate_euclidean_distance(self._weighted_decision_matrix[i, :], self._ideal)
-                anti_ideal_distance = Math.calculate_euclidean_distance(self._weighted_decision_matrix[i, :], self._anti_ideal)
+                ideal_distance = Math.calculate_euclidean_distance(
+                    self._weighted_decision_matrix[i, :], self._ideal
+                )
+                anti_ideal_distance = Math.calculate_euclidean_distance(
+                    self._weighted_decision_matrix[i, :], self._anti_ideal
+                )
                 self._distances[i, 0] = ideal_distance
                 self._distances[i, 1] = anti_ideal_distance
 
@@ -374,7 +408,9 @@ class Math():
                 if positive_distance + negative_distance == 0:
                     self._closeness[i] = 0
                 else:
-                    self._closeness[i] = negative_distance / (positive_distance + negative_distance)
+                    self._closeness[i] = negative_distance / (
+                        positive_distance + negative_distance
+                    )
 
         def topsis(self) -> None:
             """
@@ -393,7 +429,9 @@ class Math():
                 None
             """
             # Weight the matrix
-            self._weighted_decision_matrix = Math.weighted_matrix(self._decision_matrix, self._weights)
+            self._weighted_decision_matrix = Math.weighted_matrix(
+                self._decision_matrix, self._weights
+            )
 
             # Compute the extremum matrises
             self._ideal_best_worst()
@@ -417,7 +455,7 @@ class Math():
                 np.ndarray: The array of relative closeness values.
             """
             return self._closeness
-        
+
         def get_ranking(self) -> np.ndarray:
             """
             Returns the ranking of alternatives based on their relative closeness values.
@@ -432,7 +470,7 @@ class Math():
             """
             ranking = np.argsort(self._closeness)[::-1] + 1
             return ranking
-        
+
         def get_coef_from_label(self, label: str) -> None:
             """
             Retrieves the coefficient value associated with the given label.

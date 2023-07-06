@@ -38,6 +38,7 @@ from utils.dirs import TmpDirCopyFilteredWithEnv
 from utils.gitfactory import GitConnectorFactory
 import utils.math as mt
 
+
 def lint_aliases(raw_aliases) -> boolean:
     try:
         aliases = json.loads(raw_aliases)
@@ -53,55 +54,73 @@ def lint_aliases(raw_aliases) -> boolean:
 
     return True
 
+
 def check_branch_exists(configuration, repo_dir, branch_name):
-    process = subprocess.run([configuration.scm_path, "branch", "-a"],
-                             cwd=repo_dir, capture_output=True)
+    process = subprocess.run(
+        [configuration.scm_path, "branch", "-a"], cwd=repo_dir, capture_output=True
+    )
 
     if not f"remotes/origin/{branch_name}" in process.stdout.decode():
-        raise ConfigurationValidationException(f"Branch {branch_name} doesn't exists in this repository")
+        raise ConfigurationValidationException(
+            f"Branch {branch_name} doesn't exists in this repository"
+        )
 
-def instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir) -> GitConnector:
+
+def instanciate_git_connector(
+    configuration, git_factory_provider, tmp_dir, repo_dir
+) -> GitConnector:
     """
-        Instanciates a git connector and performs first checks
+    Instanciates a git connector and performs first checks
     """
     # Clone the repository
-    process = subprocess.run([configuration.scm_path, "clone", configuration.source_repo_url],
-                             stdout=subprocess.PIPE,
-                             cwd=tmp_dir)
+    process = subprocess.run(
+        [configuration.scm_path, "clone", configuration.source_repo_url],
+        stdout=subprocess.PIPE,
+        cwd=tmp_dir,
+    )
 
     try:
         process.check_returncode()
     except subprocess.CalledProcessError:
-        raise ConfigurationValidationException(f"Failed to clone {configuration.source_repo_url} repository")
-    logging.info('Executed command line: ' + ' '.join(process.args))
+        raise ConfigurationValidationException(
+            f"Failed to clone {configuration.source_repo_url} repository"
+        )
+    logging.info("Executed command line: " + " ".join(process.args))
 
     if not os.path.isdir(repo_dir):
         raise ConfigurationValidationException(
-            f"Project {configuration.source_project} doesn't exist in current repository")
+            f"Project {configuration.source_project} doesn't exist in current repository"
+        )
 
     check_branch_exists(configuration, repo_dir, configuration.current_branch)
-    process = subprocess.run([configuration.scm_path, "checkout", configuration.current_branch],
-                             stdout=subprocess.PIPE,
-                             cwd=repo_dir)
+    process = subprocess.run(
+        [configuration.scm_path, "checkout", configuration.current_branch],
+        stdout=subprocess.PIPE,
+        cwd=repo_dir,
+    )
 
     try:
-        git: GitConnector = git_factory_provider(
-            project.project_id,
-            repo_dir
-        )
+        git: GitConnector = git_factory_provider(project.project_id, repo_dir)
 
     except Exception as e:
         raise ConfigurationValidationException(
-            f"Error connecting to project {configuration.source_repo} using source code manager: {str(e)}.")
+            f"Error connecting to project {configuration.source_repo} using source code manager: {str(e)}."
+        )
 
     if not lint_aliases(configuration.author_alias):
-        raise ConfigurationValidationException(f"Value error for aliases: {configuration.author_alias}")
+        raise ConfigurationValidationException(
+            f"Value error for aliases: {configuration.author_alias}"
+        )
 
     return git
 
+
 def source_bugs_check(configuration) -> None:
     if len(configuration.source_bugs) == 0:
-        raise ConfigurationValidationException("No synchro because parameter 'OTTM_SOURCE_BUGS' no defined")
+        raise ConfigurationValidationException(
+            "No synchro because parameter 'OTTM_SOURCE_BUGS' no defined"
+        )
+
 
 @click.group()
 @click.pass_context
@@ -110,77 +129,113 @@ def cli(ctx):
     """Datamining on git repository to predict the risk of releasing next version"""
     pass
 
+
 @cli.command()
-@click.option('--output', default='.', help='Destination folder', envvar="OTTM_OUTPUT_FOLDER")
-@click.option('--format', default='csv', help='Output format (csv,parquet)', envvar="OTTM_OUTPUT_FORMAT")
+@click.option(
+    "--output", default=".", help="Destination folder", envvar="OTTM_OUTPUT_FOLDER"
+)
+@click.option(
+    "--format",
+    default="csv",
+    help="Output format (csv,parquet)",
+    envvar="OTTM_OUTPUT_FORMAT",
+)
 @click.pass_context
 @inject
-def export(ctx, output, format, 
-           flat_file_exporter_provider = Provide[Container.flat_file_exporter_provider.provider]):
+def export(
+    ctx,
+    output,
+    format,
+    flat_file_exporter_provider=Provide[Container.flat_file_exporter_provider.provider],
+):
     """Export the database to a flat format"""
     logging.info("export")
     if output is None:
         logging.error("Parameter output is mandatory")
-        sys.exit('Parameter output is mandatory')
+        sys.exit("Parameter output is mandatory")
     if format is None:
         logging.error("Parameter format is mandatory")
-        sys.exit('Parameter format is mandatory')
+        sys.exit("Parameter format is mandatory")
     else:
         format = format.lower()
-        if format not in ['csv','parquet']:
+        if format not in ["csv", "parquet"]:
             logging.error("Unsupported output format")
-            sys.exit('Unsupported output format')
+            sys.exit("Unsupported output format")
     os.makedirs(output, exist_ok=True)
     exporter = flat_file_exporter_provider(project.project_id, output)
-    if format == 'csv':
+    if format == "csv":
         exporter.export_to_csv("metrics.csv")
-    elif format == 'parquet':
+    elif format == "parquet":
         exporter.export_to_parquet("metrics.parquet")
     logging.info(f"Created export {output}/metrics.{format}")
 
+
 @cli.command()
-@click.option('--output', default='.', help='Destination folder', envvar="OTTM_OUTPUT_FOLDER")
-@click.option('--report-name', default='release', help='Name of the report (release, churn, bugvelocity)')
+@click.option(
+    "--output", default=".", help="Destination folder", envvar="OTTM_OUTPUT_FOLDER"
+)
+@click.option(
+    "--report-name",
+    default="release",
+    help="Name of the report (release, churn, bugvelocity)",
+)
 @click.pass_context
 @inject
-def report(ctx, output, report_name,
-           html_exporter_provider = Provide[Container.html_exporter_provider.provider],
-           ml_html_exporter_provider = Provide[Container.ml_html_exporter_provider.provider]):
+def report(
+    ctx,
+    output,
+    report_name,
+    html_exporter_provider=Provide[Container.html_exporter_provider.provider],
+    ml_html_exporter_provider=Provide[Container.ml_html_exporter_provider.provider],
+):
     """Create a basic HTML report"""
     MlFactory.create_predicting_ml_model(project.project_id)
     MetricFactory.create_metrics()
     exporter = html_exporter_provider(output)
     os.makedirs(output, exist_ok=True)
     if report_name == "churn":
-        exporter.generate_churn_report(project, 'churn.html')
+        exporter.generate_churn_report(project, "churn.html")
     elif report_name == "release":
-        exporter.generate_release_report(project, 'release.html')
+        exporter.generate_release_report(project, "release.html")
     elif report_name == "bugvelocity":
-        exporter.generate_bugvelocity_report(project, 'bugvelocity.html')
+        exporter.generate_bugvelocity_report(project, "bugvelocity.html")
     elif report_name == "kmeans":
         exporter = ml_html_exporter_provider(output)
-        exporter.generate_kmeans_release_report(project, 'kmeans.html')
+        exporter.generate_kmeans_release_report(project, "kmeans.html")
     else:
         click.echo("This report doesn't exist")
     logging.info(f"Created report {output}/{report_name}.html")
 
+
 @cli.command(name="import")
-@click.option('--target-table', is_flag=True, help='Target table in database for the import')
-@click.option('--file-path', is_flag=True, help='Path of file')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite database table')
+@click.option(
+    "--target-table", is_flag=True, help="Target table in database for the import"
+)
+@click.option("--file-path", is_flag=True, help="Path of file")
+@click.option(
+    "--overwrite", is_flag=True, default=False, help="Overwrite database table"
+)
 @click.pass_context
 @inject
-def import_file(ctx, target_table, file_path, overwrite,
-                flat_file_importer_provider = Provide[Container.flat_file_importer_provider.provider]):
+def import_file(
+    ctx,
+    target_table,
+    file_path,
+    overwrite,
+    flat_file_importer_provider=Provide[Container.flat_file_importer_provider.provider],
+):
     """Import file into tables"""
     importer = flat_file_importer_provider(file_path, target_table, overwrite)
     importer.import_from_csv()
 
+
 @cli.command()
-@click.option('--model-name', default='bugvelocity', help='Name of the model')
+@click.option("--model-name", default="bugvelocity", help="Name of the model")
 @click.pass_context
 @inject
-def train(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_provider.provider]):
+def train(
+    ctx, model_name, ml_factory_provider=Provide[Container.ml_factory_provider.provider]
+):
     """Train a model"""
     MlFactory.create_training_ml_model(model_name)
     MetricFactory.create_metrics()
@@ -188,11 +243,14 @@ def train(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_pr
     model.train()
     click.echo("Model was trained")
 
+
 @cli.command()
-@click.option('--model-name', default='bugvelocity', help='Name of the model')
+@click.option("--model-name", default="bugvelocity", help="Name of the model")
 @click.pass_context
 @inject
-def predict(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_provider.provider]):
+def predict(
+    ctx, model_name, ml_factory_provider=Provide[Container.ml_factory_provider.provider]
+):
     """Predict next value with a trained model"""
     MlFactory.create_training_ml_model(model_name)
     MetricFactory.create_metrics()
@@ -200,26 +258,46 @@ def predict(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_
     value = model.predict()
     click.echo("Predicted value : " + str(value))
 
+
 @cli.command()
 @click.pass_context
 @inject
-def info(ctx, configuration = Provide[Container.configuration], session = Provide[Container.session]):
+def info(
+    ctx,
+    configuration=Provide[Container.configuration],
+    session=Provide[Container.session],
+):
     """Provide information about the current configuration
     If these values are not populated, the tool won't work.
     """
-    
+
     excluded_versions = configuration.exclude_versions
-    included_and_current_versions = get_included_and_current_versions_filter(session, configuration)
-    filtered_version_count = session.query(Version) \
-                                    .filter(Version.project_id == project.project_id) \
-                                    .filter(Version.include_filter(included_and_current_versions)) \
-                                    .filter(Version.exclude_filter(excluded_versions)) \
-                                    .count()
-    
-    total_versions_count = session.query(Version).filter(Version.project_id == project.project_id).count()
-    issues_count = session.query(Issue).filter(Issue.project_id == project.project_id).count()
-    metrics_count = session.query(Metric).join(Version).filter(Version.project_id == project.project_id).count()
-    trained_models = session.query(Model.name).filter(Model.project_id == project.project_id).all()
+    included_and_current_versions = get_included_and_current_versions_filter(
+        session, configuration
+    )
+    filtered_version_count = (
+        session.query(Version)
+        .filter(Version.project_id == project.project_id)
+        .filter(Version.include_filter(included_and_current_versions))
+        .filter(Version.exclude_filter(excluded_versions))
+        .count()
+    )
+
+    total_versions_count = (
+        session.query(Version).filter(Version.project_id == project.project_id).count()
+    )
+    issues_count = (
+        session.query(Issue).filter(Issue.project_id == project.project_id).count()
+    )
+    metrics_count = (
+        session.query(Metric)
+        .join(Version)
+        .filter(Version.project_id == project.project_id)
+        .count()
+    )
+    trained_models = (
+        session.query(Model.name).filter(Model.project_id == project.project_id).all()
+    )
     trained_models = [r for r, in trained_models]
 
     out = """ -- OTTM Bug Predictor --
@@ -240,21 +318,25 @@ def info(ctx, configuration = Provide[Container.configuration], session = Provid
         repo=configuration.source_repo_url,
         release=configuration.current_branch,
         versions=filtered_version_count,
-        excluded_versions=total_versions_count-filtered_version_count,
+        excluded_versions=total_versions_count - filtered_version_count,
         issues=issues_count,
         metrics=metrics_count,
-        models=", ".join(trained_models)
-        )
+        models=", ".join(trained_models),
+    )
     click.echo(out)
+
 
 @cli.command()
 @click.pass_context
 @inject
-def check(ctx, configuration = Provide[Container.configuration],
-          git_factory_provider = Provide[Container.git_factory_provider.provider]):
+def check(
+    ctx,
+    configuration=Provide[Container.configuration],
+    git_factory_provider=Provide[Container.git_factory_provider.provider],
+):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
-    logging.info('created temporary directory: ' + tmp_dir)
+    logging.info("created temporary directory: " + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
     source_bugs_check(configuration)
@@ -262,66 +344,79 @@ def check(ctx, configuration = Provide[Container.configuration],
 
     logging.info("Check OK")
 
+
 @cli.command()
-@click.option('--skip-versions', is_flag=True, default=False, help="Skip the step <populate Version table>")
+@click.option(
+    "--skip-versions",
+    is_flag=True,
+    default=False,
+    help="Skip the step <populate Version table>",
+)
 @click.pass_context
 @inject
-def populate(ctx, skip_versions,
-             session = Provide[Container.session],
-             configuration = Provide[Container.configuration],
-             git_factory_provider = Provide[Container.git_factory_provider.provider],
-             jira_connector_provider = Provide[Container.jira_connector_provider.provider],
-             glpi_connector_provider = Provide[Container.glpi_connector_provider.provider],
-             ck_connector_provider = Provide[Container.ck_connector_provider.provider],
-             pylint_connector_provider = Provide[Container.pylint_connector_provider.provider],
-             file_analyzer_provider = Provide[Container.file_analyzer_provider.provider],
-             jpeek_connector_provider = Provide[Container.jpeek_connector_provider.provider],
-             legacy_connector_provider = Provide[Container.legacy_connector_provider.provider],
-             codemaat_connector_provider = Provide[Container.codemaat_connector_provider.provider],
-             pdepend_connector_provider = Provide[Container.pdepend_connector_provider.provider],
-             radon_connector_provider = Provide[Container.radon_connector_provider.provider],
-             survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
+def populate(
+    ctx,
+    skip_versions,
+    session=Provide[Container.session],
+    configuration=Provide[Container.configuration],
+    git_factory_provider=Provide[Container.git_factory_provider.provider],
+    jira_connector_provider=Provide[Container.jira_connector_provider.provider],
+    glpi_connector_provider=Provide[Container.glpi_connector_provider.provider],
+    ck_connector_provider=Provide[Container.ck_connector_provider.provider],
+    pylint_connector_provider=Provide[Container.pylint_connector_provider.provider],
+    file_analyzer_provider=Provide[Container.file_analyzer_provider.provider],
+    jpeek_connector_provider=Provide[Container.jpeek_connector_provider.provider],
+    legacy_connector_provider=Provide[Container.legacy_connector_provider.provider],
+    codemaat_connector_provider=Provide[Container.codemaat_connector_provider.provider],
+    pdepend_connector_provider=Provide[Container.pdepend_connector_provider.provider],
+    radon_connector_provider=Provide[Container.radon_connector_provider.provider],
+    survey_connector_provider=Provide[Container.survey_connector_provider.provider],
+):
     """Populate the database with the provided configuration"""
-
-    
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
     tmp_dir = tempfile.mkdtemp()
-    logging.info('created temporary directory: ' + tmp_dir)
+    logging.info("created temporary directory: " + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
-    git = instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
+    git = instanciate_git_connector(
+        configuration, git_factory_provider, tmp_dir, repo_dir
+    )
 
     for source_bugs in configuration.source_bugs:
-        if source_bugs.strip() == 'jira':
+        if source_bugs.strip() == "jira":
             # Populate issue table in database with Jira issues
             jira: JiraConnector = jira_connector_provider(project.project_id)
             jira.create_issues()
-        elif source_bugs.strip() == 'glpi':
+        elif source_bugs.strip() == "glpi":
             # Populate issue table in database with Glpi issues
             glpi: GlpiConnector = glpi_connector_provider(project.project_id)
             glpi.create_issues()
-        elif source_bugs.strip() == 'git':
+        elif source_bugs.strip() == "git":
             git.create_issues()
             # if we use code maat git.setup_aliases(configuration.author_alias)
-    
+
     git.populate_db(skip_versions)
     survey = survey_connector_provider()
     survey.populate_comments()
 
     # List the versions and checkout each one of them
-    versions = session.query(Version).filter(Version.project_id == project.project_id).all()
+    versions = (
+        session.query(Version).filter(Version.project_id == project.project_id).all()
+    )
     legacy = legacy_connector_provider(project.project_id, repo_dir)
     for version in versions:
-        process = subprocess.run([configuration.scm_path, "checkout", version.tag],
-                                stdout=subprocess.PIPE,
-                                cwd=repo_dir)
-        logging.info('Executed command line: ' + ' '.join(process.args))
+        process = subprocess.run(
+            [configuration.scm_path, "checkout", version.tag],
+            stdout=subprocess.PIPE,
+            cwd=repo_dir,
+        )
+        logging.info("Executed command line: " + " ".join(process.args))
 
-        with TmpDirCopyFilteredWithEnv(repo_dir, configuration.include_folders, 
-                                       configuration.exclude_folders) as tmp_work_dir:
-
+        with TmpDirCopyFilteredWithEnv(
+            repo_dir, configuration.include_folders, configuration.exclude_folders
+        ) as tmp_work_dir:
             legacy.get_legacy_files(version)
 
             # Get statistics from git log with codemaat
@@ -340,69 +435,85 @@ def populate(ctx, skip_versions,
                 # Get metrics with JPeek
                 # jp = jpeek_connector_provider(directory=tmp_work_dir, version=version)
                 # jp.analyze_source_code()
-                            
+
             elif configuration.language.lower() == "php":
                 # Get metrics with PDepend
-                pdepend = pdepend_connector_provider(directory=tmp_work_dir, version=version)
+                pdepend = pdepend_connector_provider(
+                    directory=tmp_work_dir, version=version
+                )
                 pdepend.analyze_source_code()
-            
+
             elif configuration.language.lower() == "python":
-                
                 # Get metrics with Radon
-                radon = radon_connector_provider(directory = tmp_work_dir, version = version)
+                radon = radon_connector_provider(
+                    directory=tmp_work_dir, version=version
+                )
                 radon.analyze_source_code()
 
                 # Get metrics with Pylint
-                pylint = pylint_connector_provider(directory = tmp_work_dir, version = version)
+                pylint = pylint_connector_provider(
+                    directory=tmp_work_dir, version=version
+                )
                 pylint.analyze_source_code()
-                
+
             else:
                 raise Exception(f"Unsupported language: {configuration.language}")
 
-
-
-    
 
 @click.command()
 @inject
 def main():
     pass
 
+
 #####################################################################
 # For research purposes only                                        #
 #####################################################################
 
+
 @cli.command()
 @inject
-def topsis( 
-           session = Provide[Container.session], 
-           configuration: Configuration = Provide[Container.configuration]
-           ):
+def topsis(
+    session=Provide[Container.session],
+    configuration: Configuration = Provide[Container.configuration],
+):
     excluded_versions = configuration.exclude_versions
-    included_and_current_versions = get_included_and_current_versions_filter(session, configuration)
+    included_and_current_versions = get_included_and_current_versions_filter(
+        session, configuration
+    )
 
     # Get the version metrics and the average cyclomatic complexity
-    metrics_statement = session.query(Version, Metric) \
-        .filter(Version.project_id == project.project_id) \
-        .filter(Version.include_filter(included_and_current_versions)) \
-        .filter(Version.exclude_filter(excluded_versions)) \
-        .join(Metric, Metric.version_id == Version.version_id) \
-        .order_by(Version.start_date.asc()).statement
+    metrics_statement = (
+        session.query(Version, Metric)
+        .filter(Version.project_id == project.project_id)
+        .filter(Version.include_filter(included_and_current_versions))
+        .filter(Version.exclude_filter(excluded_versions))
+        .join(Metric, Metric.version_id == Version.version_id)
+        .order_by(Version.start_date.asc())
+        .statement
+    )
     logging.debug(metrics_statement)
     df = pd.read_sql(metrics_statement, session.get_bind())
 
     # Prepare data for topsis
     alternative_data = {
-        'bug_velocity': preprocessing.normalize([df['bug_velocity'].to_numpy()]),
-        'changes': preprocessing.normalize([df['changes'].to_numpy()]),
-        'avg_team_xp': preprocessing.normalize([df['avg_team_xp'].to_numpy()]),
-        'avg_complexity': preprocessing.normalize([df['lizard_avg_complexity'].to_numpy()]),
-        'code_churn': preprocessing.normalize([df['code_churn_avg'].to_numpy()])
+        "bug_velocity": preprocessing.normalize([df["bug_velocity"].to_numpy()]),
+        "changes": preprocessing.normalize([df["changes"].to_numpy()]),
+        "avg_team_xp": preprocessing.normalize([df["avg_team_xp"].to_numpy()]),
+        "avg_complexity": preprocessing.normalize(
+            [df["lizard_avg_complexity"].to_numpy()]
+        ),
+        "code_churn": preprocessing.normalize([df["code_churn_avg"].to_numpy()]),
     }
     criteria_data = {
-        'bugs': preprocessing.normalize([df['bugs'].to_numpy()])
+        "bugs": preprocessing.normalize([df["bugs"].to_numpy()]),
+        "stars": preprocessing.normalize([df["stars"].to_numpy()]),
+        "forks": preprocessing.normalize([df["forks"].to_numpy()]),
+        "subscribers": preprocessing.normalize([df["subscribers"].to_numpy()]),
     }
-    
+
+    print("SUB :", criteria_data['subscribers'])
+
     # Create the decision matrix
     decision_matrix_builder = mt.Math.DecisionMatrixBuilder()
 
@@ -415,14 +526,24 @@ def topsis(
     methods = []
     for method in configuration.topsis_corr_method:
         methods.append(mt.Math.get_correlation_methods_from_name(method))
-    
-    decision_matrix_builder.set_correlation_methods(methods)
+
+    if len(methods) > 0:
+        decision_matrix_builder.set_correlation_methods(methods)
 
     decision_matrix = decision_matrix_builder.build()
     print(decision_matrix.matrix)
 
     # Compute topsis
-    ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.TOPSIS.MAX])
+    ts = mt.Math.TOPSIS(
+        decision_matrix,
+        [0.25, 0.25, 0.25, 0.25],
+        [
+            mt.Math.TOPSIS.MAX,
+            mt.Math.TOPSIS.MIN,
+            mt.Math.TOPSIS.MIN,
+            mt.Math.TOPSIS.MAX,
+        ],
+    )
     ts.topsis()
 
     weight = ts.get_closeness()
@@ -444,62 +565,73 @@ def topsis(
 
     return output
 
+
 #####################################################################
 
-@inject
-def configure_logging(config = Provide[Container.configuration]) -> None:
-    logging.basicConfig(level=config.log_level)
 
 @inject
-def configure_session(container: Container, config = Provide[Container.configuration]) -> None:
+def configure_logging(config=Provide[Container.configuration]) -> None:
+    logging.basicConfig(level=config.log_level)
+
+
+@inject
+def configure_session(
+    container: Container, config=Provide[Container.configuration]
+) -> None:
     try:
         engine = db.create_engine(config.target_database)
     except ArgumentError as e:
         raise ConfigurationValidationException(f"Error from sqlalchemy : {str(e)}")
-    
+
     Session = sessionmaker()
     Session.configure(bind=engine)
     setup_database(engine)
 
-    container.session.override(
-        providers.Singleton(Session)
-    )
+    container.session.override(providers.Singleton(Session))
+
 
 @inject
-def instanciate_project(config = Provide[Container.configuration],
-                        session = Provide[Container.session]) -> Project:
-    project = session.query(Project).filter(Project.name == config.source_project).first()
+def instanciate_project(
+    config=Provide[Container.configuration], session=Provide[Container.session]
+) -> Project:
+    project = (
+        session.query(Project).filter(Project.name == config.source_project).first()
+    )
     if not project:
-        project = Project(name=config.source_project,
-                        repo=config.source_repo,
-                        language=config.language)
+        project = Project(
+            name=config.source_project,
+            repo=config.source_repo,
+            language=config.language,
+        )
         session.add(project)
         session.commit()
     return project
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         load_dotenv()
 
         container = Container()
         container.init_resources()
-        container.wire(modules=[
-            __name__,
-            "utils.gitfactory",
-            "utils.mlfactory",
-            "utils.metricfactory"
-        ])
+        container.wire(
+            modules=[
+                __name__,
+                "utils.gitfactory",
+                "utils.mlfactory",
+                "utils.metricfactory",
+            ]
+        )
 
         configure_logging()
         configure_session(container)
         project = instanciate_project()
         GitConnectorFactory.create_git_connector()
 
-        logging.info('python: ' + platform.python_version())
-        logging.info('system: ' + platform.system())
-        logging.info('machine: ' + platform.machine())
-        
+        logging.info("python: " + platform.python_version())
+        logging.info("system: " + platform.system())
+        logging.info("machine: " + platform.machine())
+
         # Setup command line options
         cli(obj={})
     except ConfigurationValidationException as e:
