@@ -193,13 +193,16 @@ class Math:
             self.alternatives.append(preprocessing.normalize(values))
             self.alternatives_label.append(label)
             return self
+        
+        def set_correlation_methods(self, correlation_methods) -> 'DecisionMatrixBuilder':
+            """
+            Set the correlation methods to be used for calculating the decision matrix.
 
         def set_correlation_methods(
             self, correlation_methods
         ) -> "DecisionMatrixBuilder":
             """
             Set the correlation methods to be used for calculating the decision matrix.
-
             Args:
                 correlation_methods (List[str] or str): List of correlation method names or a single method name.
 

@@ -512,8 +512,6 @@ def topsis(
         "subscribers": preprocessing.normalize([df["subscribers"].to_numpy()]),
     }
 
-    print("SUB :", criteria_data['subscribers'])
-
     # Create the decision matrix
     decision_matrix_builder = mt.Math.DecisionMatrixBuilder()
 
