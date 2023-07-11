@@ -51,45 +51,6 @@ class GitHubConnector(GitConnector):
             sleep(self.configuration.retry_delay)
             self._get_releases(all, order_by, sort)
 
-    def _get_stars(self, to: datetime = None) -> int:
-        """
-        Get stars of GitHub repository
-        """
-        stars = list(self.remote.get_stargazers_with_dates())
-
-        filtered_stars = filter(
-            lambda star: str(star.starred_at) <= str(to),
-            stars,
-        )
-
-        return len(list(filtered_stars))
-
-    def _get_forks(self, to: datetime = None):
-        """
-        Get forks of GitHub repository
-        """
-        forks = list(self.remote.get_forks())
-
-        filtered_forks = filter(
-            lambda fork: str(fork.created_at) <= str(to),
-            forks,
-        )
-
-        return len(list(filtered_forks))
-
-    def _get_subscribers(self, to: datetime = None) -> int:
-        """
-        Get watchs of GitHub repository
-        """
-        subscribers = list(self.remote.get_subscribers())
-
-        filtered_subscribers = filter(
-            lambda subscriber: str(subscriber.created_at) <= str(to),
-            subscribers,
-        )
-
-        return len(list(filtered_subscribers))
-
     @timeit
     def create_issues(self):
         """
@@ -174,6 +135,10 @@ class GitHubConnector(GitConnector):
         versions = []
         previous_release_published_at = self._get_first_commit_date()
 
+        stars = list(self.remote.get_stargazers_with_dates())
+        forks = list(self.remote.get_forks())
+        subscribers = list(self.remote.get_subscribers())
+
         for release in releases.reversed:
             versions.append(
                 Version(
@@ -182,9 +147,39 @@ class GitHubConnector(GitConnector):
                     tag=release.tag_name,
                     start_date=previous_release_published_at,
                     end_date=release.published_at,
-                    stars=self._get_stars(to=release.published_at),
-                    forks=self._get_forks(to=release.published_at),
-                    subscribers=self._get_subscribers(to=release.published_at),
+                    stars=len(
+                        list(
+                            filter(
+                                lambda star: star.starred_at.timestamp()
+                                >= previous_release_published_at.timestamp()
+                                and star.starred_at.timestamp()
+                                <= release.published_at.timestamp(),
+                                stars,
+                            )
+                        )
+                    ),
+                    forks=len(
+                        list(
+                            filter(
+                                lambda fork: fork.created_at.timestamp()
+                                >= previous_release_published_at.timestamp()
+                                and fork.created_at.timestamp()
+                                <= release.published_at.timestamp(),
+                                forks,
+                            )
+                        )
+                    ),
+                    subscribers=len(
+                        list(
+                            filter(
+                                lambda subscriber: subscriber.created_at.timestamp()
+                                >= previous_release_published_at.timestamp()
+                                and subscriber.created_at.timestamp()
+                                <= release.published_at.timestamp(),
+                                subscribers,
+                            )
+                        )
+                    ),
                 )
             )
             previous_release_published_at = release.published_at
@@ -197,9 +192,39 @@ class GitHubConnector(GitConnector):
                 tag=self.current,
                 start_date=previous_release_published_at,
                 end_date=datetime.datetime.now(),
-                stars=self._get_stars(to=datetime.datetime.now()),
-                forks=self._get_forks(to=datetime.datetime.now()),
-                subscribers=self._get_subscribers(to=datetime.datetime.now()),
+                stars=len(
+                    list(
+                        filter(
+                            lambda star: star.starred_at.timestamp()
+                            >= previous_release_published_at.timestamp()
+                            and star.starred_at.timestamp()
+                            <= datetime.datetime.now().timestamp(),
+                            stars,
+                        )
+                    )
+                ),
+                forks=len(
+                    list(
+                        filter(
+                            lambda fork: fork.created_at.timestamp()
+                            >= previous_release_published_at.timestamp()
+                            and fork.created_at.timestamp()
+                            <= datetime.datetime.now().timestamp(),
+                            forks,
+                        )
+                    )
+                ),
+                subscribers=len(
+                    list(
+                        filter(
+                            lambda subscriber: subscriber.created_at.timestamp()
+                            >= previous_release_published_at.timestamp()
+                            and subscriber.created_at.timestamp()
+                            <= datetime.datetime.now().timestamp(),
+                            subscribers,
+                        )
+                    )
+                ),
             )
         )
         self.session.add_all(versions)
