@@ -539,7 +539,7 @@ def topsis(
             mt.Math.TOPSIS.MAX,
             mt.Math.TOPSIS.MIN,
             mt.Math.TOPSIS.MIN,
-            mt.Math.TOPSIS.MAX,
+            mt.Math.TOPSIS.MIN,
         ],
     )
     ts.topsis()
