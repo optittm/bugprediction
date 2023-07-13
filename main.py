@@ -252,8 +252,9 @@ def info(ctx, configuration = Provide[Container.configuration], session = Provid
 @inject
 def check(ctx, configuration = Provide[Container.configuration],
           git_factory_provider = Provide[Container.git_factory_provider.provider],
-             jira_connector_provider = Provide[Container.jira_connector_provider.provider],
-             glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]):
+          jira_connector_provider = Provide[Container.jira_connector_provider.provider],
+          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]),
+          survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
     logging.info('created temporary directory: ' + tmp_dir)
@@ -264,6 +265,8 @@ def check(ctx, configuration = Provide[Container.configuration],
             jira: JiraConnector = jira_connector_provider(project.project_id)
         elif source_bugs.strip() == 'glpi':
             glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+
+    survey = survey_connector_provider()
 
     source_bugs_check(configuration)
     instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
@@ -296,6 +299,8 @@ def populate(ctx, skip_versions,
             jira: JiraConnector = jira_connector_provider(project.project_id)
         elif source_bugs.strip() == 'glpi':
             glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+    
+    survey = survey_connector_provider()
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
@@ -318,7 +323,6 @@ def populate(ctx, skip_versions,
             # if we use code maat git.setup_aliases(configuration.author_alias)
     
     git.populate_db(skip_versions)
-    survey = survey_connector_provider()
     survey.populate_comments()
 
     # List the versions and checkout each one of them
@@ -403,32 +407,37 @@ def topsis(
     df = pd.read_sql(metrics_statement, session.get_bind())
 
     # Prepare data for topsis
-    bugs = df['bugs'].to_numpy()
-    bugs = preprocessing.normalize([bugs])
-    bug_velocity = df['bug_velocity'].to_numpy()
-    bug_velocity = preprocessing.normalize([bug_velocity])
-    changes = df['changes'].to_numpy()
-    changes = preprocessing.normalize([changes])
-    avg_team_xp = df['avg_team_xp'].to_numpy()
-    avg_team_xp = preprocessing.normalize([avg_team_xp])
-    lizard_avg_complexity = df['lizard_avg_complexity'].to_numpy()
-    lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
-    code_churn_avg = df['code_churn_avg'].to_numpy()
-    code_churn_avg = preprocessing.normalize([code_churn_avg])
+    alternative_data = {
+        'bug_velocity': preprocessing.normalize([df['bug_velocity'].to_numpy()]),
+        'changes': preprocessing.normalize([df['changes'].to_numpy()]),
+        'avg_team_xp': preprocessing.normalize([df['avg_team_xp'].to_numpy()]),
+        'avg_complexity': preprocessing.normalize([df['lizard_avg_complexity'].to_numpy()]),
+        'code_churn': preprocessing.normalize([df['code_churn_avg'].to_numpy()])
+    }
+    criteria_data = {
+        'bugs': preprocessing.normalize([df['bugs'].to_numpy()])
+    }
+    
+    # Create the decision matrix
+    decision_matrix_builder = mt.Math.DecisionMatrixBuilder()
 
-    # create the decision matrix
-    decision_matrix_builder = mt.Math.DecisionMatrixBuilder()\
-        .add_criteria(bugs, "bugs")\
-        .add_alternative(bug_velocity, "bug_velocity")\
-        .add_alternative(changes, "changes")\
-        .add_alternative(avg_team_xp, "avg_team_xp")\
-        .add_alternative(lizard_avg_complexity, "avg_complexity")\
-        .add_alternative(code_churn_avg, "code_churn")
+    for criterion, data in criteria_data.items():
+        decision_matrix_builder.add_criteria(data, criterion)
+
+    for alternative, data in alternative_data.items():
+        decision_matrix_builder.add_alternative(data, alternative)
+
+    methods = []
+    for method in configuration.topsis_corr_method:
+        methods.append(mt.Math.get_correlation_methods_from_name(method))
+    
+    decision_matrix_builder.set_correlation_methods(methods)
 
     decision_matrix = decision_matrix_builder.build()
+    print(decision_matrix.matrix)
 
     # Compute topsis
-    ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.TOPSIS.MIN])
+    ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.TOPSIS.MAX])
     ts.topsis()
 
     weight = ts.get_closeness()
@@ -486,7 +495,19 @@ def instanciate_project(config = Provide[Container.configuration],
 
 if __name__ == '__main__':
     try:
-        load_dotenv()
+        PATH_ENV_FILE1 = './.env'
+        PATH_ENV_FILE2 = './data/.env'
+        if os.path.isfile(PATH_ENV_FILE1) and os.access(PATH_ENV_FILE1, os.R_OK):
+            # print("File PATH_ENV_FILE1 exists and is readable")
+            ENV_FILE = PATH_ENV_FILE1
+        elif os.path.isfile(PATH_ENV_FILE2) and os.access(PATH_ENV_FILE2, os.R_OK):
+            # print("File PATH_ENV_FILE2 exists and is readable")
+            ENV_FILE = PATH_ENV_FILE2
+        else:
+            print("Either the file .env is missing or not readable in directory ./ or ./data/ ")
+            exit(2)
+            
+        load_dotenv(ENV_FILE)
 
         container = Container()
         container.init_resources()
