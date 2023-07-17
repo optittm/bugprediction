@@ -36,9 +36,10 @@ class Configuration:
         self.source_repo     = self.__get_required_value("OTTM_SOURCE_REPO")
         self.current_branch  = self.__get_required_value("OTTM_CURRENT_BRANCH")
         self.source_repo_url = self.__get_required_value("OTTM_SOURCE_REPO_URL")
-
         self.source_bugs     =  self.__get_str_list("OTTM_SOURCE_BUGS")
 
+        self.survey_back_api_url = os.getenv("SURVEY_BACK_API_URL","")
+        self.survey_project_name = self.__get_str_list("SURVEY_PROJECT_NAME")
         self.scm_base_url    = os.getenv("OTTM_SCM_BASE_URL", "")
         self.scm_token       = os.getenv("OTTM_SCM_TOKEN", "")
         
@@ -71,8 +72,11 @@ class Configuration:
 
         self.retry_delay = self.__get_retry_delay("OTTM_RETRY_DELAY")
         
-        self.legacy_percent = self.__get_legacy_percent("OTTM_LEGACY_PERCENT")
+        self.legacy_percent = self.__get_float("OTTM_LEGACY_PERCENT", 20)
 
+        self.legacy_minimum_days = self.__get_int("OTTM_LEGACY_MINIMUM_DAYS", 365)
+
+        self.topsis_corr_method = self.__get_str_list("OTTM_CORR_METHOD")
 
     @staticmethod
     def __get_log_level(env_var):
@@ -145,15 +149,30 @@ class Configuration:
         return str_list
 
     @staticmethod
-    def __get_legacy_percent(env_var):
-        legacy_percent_str = os.getenv(env_var, "20")
+    def __get_float(env_var, default):
+        parsed_value = os.getenv(env_var)
+        if parsed_value is None:
+            return default
         try:
-            legacy_percent = float(legacy_percent_str)
+            parsed_float = float(parsed_value)
         except ValueError:
             raise ConfigurationValidationException(
-                f"Incorrect value : {legacy_percent_str}, OTTM_LEGACY_PERCENT should be a float number (percentage)"
+                f"Incorrect value : {parsed_value}, {env_var} should be a float number (percentage)"
             )
-        return legacy_percent
+        return parsed_float
+
+    @staticmethod 
+    def __get_int(env_var, default):
+        parsed_value = os.getenv(env_var)
+        if parsed_value is None:
+            return default
+        try:
+            parsed_int = int(parsed_value)
+        except ValueError:
+            raise ConfigurationValidationException(
+                f"Incorrect value : {parsed_value}, {env_var} should be an int"
+            )
+        return parsed_int
 
     @staticmethod
     def __get_retry_delay(env_var):

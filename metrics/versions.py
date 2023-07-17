@@ -1,13 +1,8 @@
 import logging
 import math
-import subprocess
 from datetime import datetime, timedelta
-from typing import List
-
-from git import BadName
 
 import pandas as pd
-from sqlalchemy import desc
 from sqlalchemy.sql import func
 from sklearn import preprocessing
 import pandas as pd
@@ -90,24 +85,32 @@ def compute_version_metrics(session, repo_dir:str, project_id:int):
             logging.info("Churn already done for this version")
         else :
             logging.info("Counting churn between " + from_commit + " and " + version.tag)
-            metric = CodeChurn(path_to_repo=repo_dir,
-                            from_commit=from_commit,
-                            to_commit=version.tag)
-            files_count = metric.count()
-            files_avg = metric.avg()
-            files_max = metric.max()
-            churn_count = 0
-            for file_count in files_count.values():
-                churn_count += abs(file_count)
+            try:
+                metric = CodeChurn(path_to_repo=repo_dir,
+                                from_commit=from_commit,
+                                to_commit=version.tag)
+                files_count = metric.count()
+                files_avg = metric.avg()
+                files_max = metric.max()
+                churn_count = 0
+                for file_count in files_count.values():
+                    churn_count += abs(file_count)
 
-            if files_avg:
-                churn_avg = abs(mt.Math.get_rounded_mean_safe(list(files_avg.values())))
-            else:
+                if files_avg:
+                    churn_avg = abs(mt.Math.get_rounded_mean(list(files_avg.values())))
+                else:
+                    churn_avg = 0
+
+                if files_max:
+                    churn_max = max(list(files_max.values()))
+                else:
+                    churn_max = 0
+            except ValueError:
+                logging.warning(
+                    f"Cannot compute churn for version {version.tag}, skipping. Issue is probably from a submodule commit"
+                )
+                churn_count = 0
                 churn_avg = 0
-
-            if files_max:
-                churn_max = max(list(files_max.values()))
-            else:
                 churn_max = 0
 
             logging.info('Churn count: ' + str(churn_count) + ' / Churn avg: ' + str(churn_avg) + ' / Churn max: ' + str(churn_max))
@@ -164,15 +167,17 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     # # Filter our dataframe based on condition
     # filtered_df = df[condition]
 
-    bug_velocity = np.array(df['bug_velocity'])
+    bugs = df['bugs'].to_numpy()
+    bugs = preprocessing.normalize([bugs])
+    bug_velocity = df['bug_velocity'].to_numpy()
     bug_velocity = preprocessing.normalize([bug_velocity])
-    changes = np.array(df['changes'])
+    changes = df['changes'].to_numpy()
     changes = preprocessing.normalize([changes])
-    avg_team_xp = np.array(df['avg_team_xp'])
+    avg_team_xp = df['avg_team_xp'].to_numpy()
     avg_team_xp = preprocessing.normalize([avg_team_xp])
-    lizard_avg_complexity = np.array(df['lizard_avg_complexity'])
+    lizard_avg_complexity = df['lizard_avg_complexity'].to_numpy()
     lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
-    code_churn_avg = np.array(df['code_churn_avg'])
+    code_churn_avg = df['code_churn_avg'].to_numpy()
     code_churn_avg = preprocessing.normalize([code_churn_avg])
 
     scaled_df = pd.DataFrame({

@@ -10,10 +10,14 @@ from xmlrpc.client import boolean
 
 import click
 import semver
+import numpy as np
+import pandas as pd
+from sklearn import preprocessing
 import sqlalchemy as db
 from sqlalchemy.exc import ArgumentError
 from dependency_injector.wiring import Provide, inject
 from dotenv import load_dotenv
+from configuration import Configuration
 from connectors.jira import JiraConnector
 from sqlalchemy.orm import sessionmaker
 from dependency_injector import providers
@@ -28,11 +32,13 @@ from models.model import Model
 from models.database import setup_database
 from connectors.git import GitConnector
 from connectors.glpi import GlpiConnector
+from utils.metricfactory import MetricFactory
 from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
 from utils.dirs import TmpDirCopyFilteredWithEnv
 from utils.gitfactory import GitConnectorFactory
 from utils.restrict_folder import RestrictFolder
+import utils.math as mt
 
 def lint_aliases(raw_aliases) -> boolean:
     try:
@@ -144,6 +150,7 @@ def report(ctx, output, report_name,
            ml_html_exporter_provider = Provide[Container.ml_html_exporter_provider.provider]):
     """Create a basic HTML report"""
     MlFactory.create_predicting_ml_model(project.project_id)
+    MetricFactory.create_metrics()
     exporter = html_exporter_provider(output)
     os.makedirs(output, exist_ok=True)
     if report_name == "churn":
@@ -178,6 +185,7 @@ def import_file(ctx, target_table, file_path, overwrite,
 def train(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_provider.provider]):
     """Train a model"""
     MlFactory.create_training_ml_model(model_name)
+    MetricFactory.create_metrics()
     model = ml_factory_provider(project.project_id)
     model.train()
     click.echo("Model was trained")
@@ -189,6 +197,7 @@ def train(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_pr
 def predict(ctx, model_name, ml_factory_provider = Provide[Container.ml_factory_provider.provider]):
     """Predict next value with a trained model"""
     MlFactory.create_training_ml_model(model_name)
+    MetricFactory.create_metrics()
     model = ml_factory_provider(project.project_id)
     value = model.predict()
     click.echo("Predicted value : " + str(value))
@@ -244,11 +253,22 @@ def info(ctx, configuration = Provide[Container.configuration], session = Provid
 @click.pass_context
 @inject
 def check(ctx, configuration = Provide[Container.configuration],
-          git_factory_provider = Provide[Container.git_factory_provider.provider]):
+          git_factory_provider = Provide[Container.git_factory_provider.provider],
+          jira_connector_provider = Provide[Container.jira_connector_provider.provider],
+          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]),
+          survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
     logging.info('created temporary directory: ' + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
+
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == 'jira':
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+        elif source_bugs.strip() == 'glpi':
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+
+    survey = survey_connector_provider()
 
     source_bugs_check(configuration)
     instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
@@ -272,8 +292,17 @@ def populate(ctx, skip_versions,
              legacy_connector_provider = Provide[Container.legacy_connector_provider.provider],
              codemaat_connector_provider = Provide[Container.codemaat_connector_provider.provider],
              pdepend_connector_provider = Provide[Container.pdepend_connector_provider.provider],
-             radon_connector_provider = Provide[Container.radon_connector_provider.provider]):
+             radon_connector_provider = Provide[Container.radon_connector_provider.provider],
+             survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Populate the database with the provided configuration"""
+
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == 'jira':
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+        elif source_bugs.strip() == 'glpi':
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+    
+    survey = survey_connector_provider()
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
@@ -282,7 +311,6 @@ def populate(ctx, skip_versions,
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
     git = instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
-
     for source_bugs in configuration.source_bugs:
         if source_bugs.strip() == 'jira':
             # Populate issue table in database with Jira issues
@@ -295,23 +323,23 @@ def populate(ctx, skip_versions,
         elif source_bugs.strip() == 'git':
             git.create_issues()
             # if we use code maat git.setup_aliases(configuration.author_alias)
-
+    
     git.populate_db(skip_versions)
+    survey.populate_comments()
     
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     restrict_folder = RestrictFolder(versions, configuration)
+    legacy = legacy_connector_provider(project.project_id, repo_dir)
     for version in versions:
         process = subprocess.run([configuration.scm_path, "checkout", version.tag],
                                 stdout=subprocess.PIPE,
                                 cwd=repo_dir)
         logging.info('Executed command line: ' + ' '.join(process.args))
 
-        legacy = legacy_connector_provider(project.project_id, repo_dir, version)
-        legacy.get_legacy_files(version)
-
         with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version), 
                                        restrict_folder.get_exclude_folders(version)) as tmp_work_dir:
+            legacy.get_legacy_files(version)
 
             # Get statistics from git log with codemaat
             # codemaat = codemaat_connector_provider(repo_dir, version)
@@ -357,6 +385,84 @@ def populate(ctx, skip_versions,
 def main():
     pass
 
+#####################################################################
+# For research purposes only                                        #
+#####################################################################
+
+@cli.command()
+@inject
+def topsis( 
+           session = Provide[Container.session], 
+           configuration: Configuration = Provide[Container.configuration]
+           ):
+    excluded_versions = configuration.exclude_versions
+    included_and_current_versions = get_included_and_current_versions_filter(session, configuration)
+
+    # Get the version metrics and the average cyclomatic complexity
+    metrics_statement = session.query(Version, Metric) \
+        .filter(Version.project_id == project.project_id) \
+        .filter(Version.include_filter(included_and_current_versions)) \
+        .filter(Version.exclude_filter(excluded_versions)) \
+        .join(Metric, Metric.version_id == Version.version_id) \
+        .order_by(Version.start_date.asc()).statement
+    logging.debug(metrics_statement)
+    df = pd.read_sql(metrics_statement, session.get_bind())
+
+    # Prepare data for topsis
+    alternative_data = {
+        'bug_velocity': preprocessing.normalize([df['bug_velocity'].to_numpy()]),
+        'changes': preprocessing.normalize([df['changes'].to_numpy()]),
+        'avg_team_xp': preprocessing.normalize([df['avg_team_xp'].to_numpy()]),
+        'avg_complexity': preprocessing.normalize([df['lizard_avg_complexity'].to_numpy()]),
+        'code_churn': preprocessing.normalize([df['code_churn_avg'].to_numpy()])
+    }
+    criteria_data = {
+        'bugs': preprocessing.normalize([df['bugs'].to_numpy()])
+    }
+    
+    # Create the decision matrix
+    decision_matrix_builder = mt.Math.DecisionMatrixBuilder()
+
+    for criterion, data in criteria_data.items():
+        decision_matrix_builder.add_criteria(data, criterion)
+
+    for alternative, data in alternative_data.items():
+        decision_matrix_builder.add_alternative(data, alternative)
+
+    methods = []
+    for method in configuration.topsis_corr_method:
+        methods.append(mt.Math.get_correlation_methods_from_name(method))
+    
+    decision_matrix_builder.set_correlation_methods(methods)
+
+    decision_matrix = decision_matrix_builder.build()
+    print(decision_matrix.matrix)
+
+    # Compute topsis
+    ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.TOPSIS.MAX])
+    ts.topsis()
+
+    weight = ts.get_closeness()
+    weight = weight / sum(weight)
+
+    output = {}
+    for key, value in decision_matrix_builder.alternatives_dict.items():
+        output[key] = weight[value]
+
+    total = sum(output.values())
+    print(total)
+
+    print("**********************")
+    print("* ALTERNATIVES WEIGHTS *")
+    print("**********************")
+    for key, value in output.items():
+        print("* " + key + " : ", value)
+    print("**********************")
+
+    return output
+
+#####################################################################
+
 @inject
 def configure_logging(config = Provide[Container.configuration]) -> None:
     logging.basicConfig(level=config.log_level)
@@ -391,7 +497,19 @@ def instanciate_project(config = Provide[Container.configuration],
 
 if __name__ == '__main__':
     try:
-        load_dotenv()
+        PATH_ENV_FILE1 = './.env'
+        PATH_ENV_FILE2 = './data/.env'
+        if os.path.isfile(PATH_ENV_FILE1) and os.access(PATH_ENV_FILE1, os.R_OK):
+            # print("File PATH_ENV_FILE1 exists and is readable")
+            ENV_FILE = PATH_ENV_FILE1
+        elif os.path.isfile(PATH_ENV_FILE2) and os.access(PATH_ENV_FILE2, os.R_OK):
+            # print("File PATH_ENV_FILE2 exists and is readable")
+            ENV_FILE = PATH_ENV_FILE2
+        else:
+            print("Either the file .env is missing or not readable in directory ./ or ./data/ ")
+            exit(2)
+            
+        load_dotenv(ENV_FILE)
 
         container = Container()
         container.init_resources()
@@ -399,6 +517,7 @@ if __name__ == '__main__':
             __name__,
             "utils.gitfactory",
             "utils.mlfactory",
+            "utils.metricfactory"
         ])
 
         configure_logging()

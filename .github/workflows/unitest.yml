@@ -1,0 +1,13 @@
+name: Call workflow Python unittest application
+on:
+  push:
+    branches:
+      - main
+      - devel
+  pull_request:
+    branches:
+      - main
+      - devel
+jobs:
+  call-workflow:
+    uses: optittm/common-ci/.github/workflows/unitest.yml@main

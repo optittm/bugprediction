@@ -3,6 +3,7 @@ from configuration import Configuration
 from dotenv import load_dotenv
 from sqlalchemy.orm import sessionmaker
 from connectors.radon import RadonConnector
+from connectors.survey import SurveyConnector
 from exporters.ml_reports import MlHtmlExporter
 
 from ml.ml import ml
@@ -19,6 +20,7 @@ from importers.flatfile import FlatFileImporter
 from exporters.html import HtmlExporter
 from exporters.flatfile import FlatFileExporter
 from connectors.pdepend import PDependConnector
+from metrics.metric_common import MetricCommon
 
 class Container(containers.DeclarativeContainer):
     load_dotenv()
@@ -91,8 +93,18 @@ class Container(containers.DeclarativeContainer):
         GitConnector
     )
 
+    survey_connector_provider = providers.Factory(
+        SurveyConnector,
+        configuration= configuration,
+        session=session
+    )
+    
     ml_factory_provider = providers.AbstractFactory(
         ml
+    )
+
+    metric_factory_provider = providers.AbstractFactory(
+        MetricCommon
     )
 
     html_exporter_provider = providers.Singleton(

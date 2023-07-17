@@ -106,6 +106,14 @@ See the [list of commands](./docs/commands.md) for other options.
 
 Please refer to the [advanced configuration documentation](./docs/advanced_configuration.md) for a more precise configuration.
 
+## Connecting with Survey
+
+BugPrediction can be connected with our [Survey tool](https://github.com/optittm/survey-back-api) to retrieve user feedback and add it to the database. To do so, you need to start the Survey API server and add the following environment variables to the .env file:    
+```SURVEY_BACK_API_URL```  
+```SURVEY_PROJECT_NAME```  
+
+Make sure to replace with the URL of the Survey server and with the name of the Survey project, if you want to get the user reviews of all the projects then leave the project name empty.
+
 ## How to get your tokens
 
 These tokens allow Bugprediction to call the apps' APIs and retrieve necessary data. Here's how to get each one of them.
@@ -136,6 +144,8 @@ Copy the token and paste it next to ```OTTM_JIRA_TOKEN``` in the .env file.
 ## Limitations
 
 The tool currently doesn't support repositories with multiple releases in parallel (i.e. a latest version maintained in parallel of a LTS version). You have to [import](./docs/import.md) the branch of versions that you want to examine.
+
+Git's submodules cause issues within PyDriller when traversing commits and calculating metrics. Therefore BugPrediction is just skipping them. If you use submodules, BugPrediction's analysis may be erroneous.
 
 Linking issues and commits to a version is a tedious task. At this stage, the tool roughly estimate that issues and commits are linked to a version if the objects were created between the start and end dates of the version. 
 

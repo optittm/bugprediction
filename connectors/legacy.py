@@ -14,9 +14,8 @@ from utils.database import save_file_if_not_found
 
 class LegacyConnector:
 
-    def __init__(self, project_id, directory, version, session, config):
+    def __init__(self, project_id, directory, session, config):
         self.session = session
-        self.version = version
         self.project_id = project_id
         self.configuration = config
 
@@ -32,12 +31,12 @@ class LegacyConnector:
         return project_first_commit.date
 
     def get_legacy_files(self, version: Version):
-        metric = self.session.query(Metric).filter(Metric.version_id == self.version.version_id).first()
+        metric = self.session.query(Metric).filter(Metric.version_id == version.version_id).first()
         if metric and metric.nb_legacy_files:
             logging.info('Legacy analysis already done for this version')
         else:
             
-            logging.info("Getting modified legacy files for version %s", version.name)
+            logging.info("Getting modified legacy files for version '%s'", version.name)
             modified_legacy_files = {}
 
             commits: List[Commit] = self.session.query(Commit).filter(Commit.project_id == self.project_id) \
@@ -69,37 +68,52 @@ class LegacyConnector:
     def __legacy_time_delta(self, current_commit_date):
         delta_since_first_commit = current_commit_date - self.first_commit_date
         
-        # We consider as legacy something that was modified in the first x% days of the project
+        # We consider as legacy something that was modified before the last x% days of the project
         x = self.configuration.legacy_percent
-        legacy = round(((delta_since_first_commit.days / 100) * x), 1)
+        legacy = round(((delta_since_first_commit.days / 100) * (x)), 1)
         legacy_time_delta = datetime.timedelta(days=legacy)
         return delta_since_first_commit - legacy_time_delta
 
-    @staticmethod
-    def get_modified_legacy_files_for_commit(files_last_modification: Dict[str, datetime.datetime], 
+    def get_modified_legacy_files_for_commit(self, files_last_modification: Dict[str, datetime.datetime], 
                                             commit_details: pydriller.Commit, 
                                             legacy_time_delta: datetime.timedelta) -> List[Dict[str, str]]:
 
         modified_legacy_files = []
 
-        for modified_file in commit_details.modified_files:
+        try:
+            for modified_file in commit_details.modified_files:
+                if modified_file.old_path is None or modified_file.old_path not in files_last_modification:
+                    continue
 
-            if modified_file.old_path is None or modified_file.old_path not in files_last_modification:
-                continue
+                last_modification_date = files_last_modification[modified_file.old_path]
 
-            last_modification_date = files_last_modification[modified_file.old_path]
+                legacy_minimum_delta = datetime.timedelta(days=self.configuration.legacy_minimum_days)
+                if commit_details.committer_date - last_modification_date < legacy_minimum_delta:
+                    logging.debug(
+                        "Modified since less than %s days, file is not legacy", self.configuration.legacy_minimum_days
+                    )
+                    continue
 
-            if commit_details.committer_date - last_modification_date < legacy_time_delta:
-                continue
+                if commit_details.committer_date - last_modification_date > legacy_time_delta:
+                    logging.debug(
+                        "Modified since less than the %s\% last days, file is not legacy", 
+                        self.configuration.legacy_minimum_days
+                    )
+                    continue
 
-            if modified_file.new_path is None:
-                continue
+                if modified_file.new_path is None:
+                    logging.debug("File deleted, file not legacy")
+                    continue
 
-            modified_legacy_files.append({
-                "old_path": modified_file.old_path,
-                "new_path": modified_file.new_path,
-                "filename": modified_file.filename,
-            })
+                modified_legacy_files.append({
+                    "old_path": modified_file.old_path,
+                    "new_path": modified_file.new_path,
+                    "filename": modified_file.filename,
+                })
+        except ValueError:
+            logging.warning(
+                f"Cannot retrieve modified legacy files for commit {commit_details.hash}, skipping. Issue is probably from a submodule commit"
+            )
 
         return modified_legacy_files
 
@@ -122,10 +136,15 @@ class LegacyConnector:
         
         new_files_last_modification = copy.deepcopy(files_last_modification)
 
-        for modified_file in commit_details.modified_files:
-            new_files_last_modification.pop(modified_file.old_path, None)
-            new_files_last_modification[modified_file.new_path] = commit_details.committer_date
-
+        try:
+            for modified_file in commit_details.modified_files:
+                new_files_last_modification.pop(modified_file.old_path, None)
+                new_files_last_modification[modified_file.new_path] = commit_details.committer_date
+        except ValueError:
+            logging.warning(
+                f"Cannot retrieve modified legacy files for commit {commit_details.hash}, skipping. Issue is probably from a submodule commit"
+            )
+        
         return new_files_last_modification
 
     def __save_legacy_files(self, legacy_files: List[str], version_id: int):
