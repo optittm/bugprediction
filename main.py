@@ -329,15 +329,23 @@ def info(
 @cli.command()
 @click.pass_context
 @inject
-def check(
-    ctx,
-    configuration=Provide[Container.configuration],
-    git_factory_provider=Provide[Container.git_factory_provider.provider],
-):
+def check(ctx, configuration = Provide[Container.configuration],
+          git_factory_provider = Provide[Container.git_factory_provider.provider],
+          jira_connector_provider = Provide[Container.jira_connector_provider.provider],
+          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]),
+          survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
     logging.info("created temporary directory: " + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
+
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == 'jira':
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+        elif source_bugs.strip() == 'glpi':
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+
+    survey = survey_connector_provider()
 
     source_bugs_check(configuration)
     instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
@@ -373,6 +381,14 @@ def populate(
     survey_connector_provider=Provide[Container.survey_connector_provider.provider],
 ):
     """Populate the database with the provided configuration"""
+    
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == 'jira':
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+        elif source_bugs.strip() == 'glpi':
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+    
+    survey = survey_connector_provider()
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
@@ -380,9 +396,7 @@ def populate(
     logging.info("created temporary directory: " + tmp_dir)
     repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
-    git = instanciate_git_connector(
-        configuration, git_factory_provider, tmp_dir, repo_dir
-    )
+    git = instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
 
     for source_bugs in configuration.source_bugs:
         if source_bugs.strip() == "jira":
@@ -398,7 +412,6 @@ def populate(
             # if we use code maat git.setup_aliases(configuration.author_alias)
 
     git.populate_db(skip_versions)
-    survey = survey_connector_provider()
     survey.populate_comments()
 
     # List the versions and checkout each one of them
@@ -608,7 +621,19 @@ def instanciate_project(
 
 if __name__ == "__main__":
     try:
-        load_dotenv()
+        PATH_ENV_FILE1 = './.env'
+        PATH_ENV_FILE2 = './data/.env'
+        if os.path.isfile(PATH_ENV_FILE1) and os.access(PATH_ENV_FILE1, os.R_OK):
+            # print("File PATH_ENV_FILE1 exists and is readable")
+            ENV_FILE = PATH_ENV_FILE1
+        elif os.path.isfile(PATH_ENV_FILE2) and os.access(PATH_ENV_FILE2, os.R_OK):
+            # print("File PATH_ENV_FILE2 exists and is readable")
+            ENV_FILE = PATH_ENV_FILE2
+        else:
+            print("Either the file .env is missing or not readable in directory ./ or ./data/ ")
+            exit(2)
+            
+        load_dotenv(ENV_FILE)
 
         container = Container()
         container.init_resources()
