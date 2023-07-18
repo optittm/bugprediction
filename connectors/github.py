@@ -140,6 +140,16 @@ class GitHubConnector(GitConnector):
         subscribers = list(self.remote.get_subscribers())
 
         for release in releases.reversed:
+            if previous_release_published_at.tzinfo is None:
+                previous_release_published_at = (
+                    previous_release_published_at.astimezone(datetime.timezone.utc)
+                )
+
+            if release.published_at.tzinfo is None:
+                release_published_at_timezone = release.published_at.astimezone(
+                    datetime.timezone.utc
+                )
+
             versions.append(
                 Version(
                     project_id=self.project_id,
@@ -150,10 +160,12 @@ class GitHubConnector(GitConnector):
                     stars=len(
                         list(
                             filter(
-                                lambda star: star.starred_at.timestamp()
-                                >= previous_release_published_at.timestamp()
-                                and star.starred_at.timestamp()
-                                <= release.published_at.timestamp(),
+                                lambda star: star.starred_at.astimezone(
+                                    datetime.timezone.utc
+                                )
+                                >= previous_release_published_at
+                                and star.starred_at.astimezone(datetime.timezone.utc)
+                                <= release_published_at_timezone,
                                 stars,
                             )
                         )
@@ -161,10 +173,12 @@ class GitHubConnector(GitConnector):
                     forks=len(
                         list(
                             filter(
-                                lambda fork: fork.created_at.timestamp()
-                                >= previous_release_published_at.timestamp()
-                                and fork.created_at.timestamp()
-                                <= release.published_at.timestamp(),
+                                lambda fork: fork.created_at.astimezone(
+                                    datetime.timezone.utc
+                                )
+                                >= previous_release_published_at
+                                and fork.created_at.astimezone(datetime.timezone.utc)
+                                <= release_published_at_timezone,
                                 forks,
                             )
                         )
@@ -172,10 +186,14 @@ class GitHubConnector(GitConnector):
                     subscribers=len(
                         list(
                             filter(
-                                lambda subscriber: subscriber.created_at.timestamp()
-                                >= previous_release_published_at.timestamp()
-                                and subscriber.created_at.timestamp()
-                                <= release.published_at.timestamp(),
+                                lambda subscriber: subscriber.created_at.astimezone(
+                                    datetime.timezone.utc
+                                )
+                                >= previous_release_published_at
+                                and subscriber.created_at.astimezone(
+                                    datetime.timezone.utc
+                                )
+                                <= release_published_at_timezone,
                                 subscribers,
                             )
                         )
@@ -185,20 +203,25 @@ class GitHubConnector(GitConnector):
             previous_release_published_at = release.published_at
 
         # Put current branch at the end of the list
+        if previous_release_published_at.tzinfo is None:
+            previous_release_published_at = previous_release_published_at.astimezone(
+                datetime.timezone.utc
+            )
+
         versions.append(
             Version(
                 project_id=self.project_id,
                 name=self.configuration.next_version_name,
                 tag=self.current,
                 start_date=previous_release_published_at,
-                end_date=datetime.datetime.now(),
+                end_date=datetime.datetime.now(datetime.timezone.utc),
                 stars=len(
                     list(
                         filter(
-                            lambda star: star.starred_at.timestamp()
-                            >= previous_release_published_at.timestamp()
-                            and star.starred_at.timestamp()
-                            <= datetime.datetime.now().timestamp(),
+                            lambda star: star.starred_at.astimezone(
+                                datetime.timezone.utc
+                            )
+                            >= previous_release_published_at,
                             stars,
                         )
                     )
@@ -206,10 +229,10 @@ class GitHubConnector(GitConnector):
                 forks=len(
                     list(
                         filter(
-                            lambda fork: fork.created_at.timestamp()
-                            >= previous_release_published_at.timestamp()
-                            and fork.created_at.timestamp()
-                            <= datetime.datetime.now().timestamp(),
+                            lambda fork: fork.created_at.astimezone(
+                                datetime.timezone.utc
+                            )
+                            >= previous_release_published_at,
                             forks,
                         )
                     )
@@ -217,10 +240,10 @@ class GitHubConnector(GitConnector):
                 subscribers=len(
                     list(
                         filter(
-                            lambda subscriber: subscriber.created_at.timestamp()
-                            >= previous_release_published_at.timestamp()
-                            and subscriber.created_at.timestamp()
-                            <= datetime.datetime.now().timestamp(),
+                            lambda subscriber: subscriber.created_at.astimezone(
+                                datetime.timezone.utc
+                            )
+                            >= previous_release_published_at,
                             subscribers,
                         )
                     )
