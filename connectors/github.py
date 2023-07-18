@@ -140,6 +140,7 @@ class GitHubConnector(GitConnector):
         subscribers = list(self.remote.get_subscribers())
 
         for release in releases.reversed:
+            # Set UTC Timezone for previous release and release published_at when they are None
             if previous_release_published_at.tzinfo is None:
                 previous_release_published_at = (
                     previous_release_published_at.astimezone(datetime.timezone.utc)
@@ -160,6 +161,7 @@ class GitHubConnector(GitConnector):
                     stars=len(
                         list(
                             filter(
+                                # Set timezone of star starred_at to UTC
                                 lambda star: star.starred_at.astimezone(
                                     datetime.timezone.utc
                                 )
@@ -173,6 +175,7 @@ class GitHubConnector(GitConnector):
                     forks=len(
                         list(
                             filter(
+                                # Set timezone of fork created_at to UTC
                                 lambda fork: fork.created_at.astimezone(
                                     datetime.timezone.utc
                                 )
@@ -186,6 +189,7 @@ class GitHubConnector(GitConnector):
                     subscribers=len(
                         list(
                             filter(
+                                # Set timezone of subscriber created_at to UTC
                                 lambda subscriber: subscriber.created_at.astimezone(
                                     datetime.timezone.utc
                                 )
@@ -203,6 +207,7 @@ class GitHubConnector(GitConnector):
             previous_release_published_at = release.published_at
 
         # Put current branch at the end of the list
+        # Set UTC Timezone for previous release published_at when it's None
         if previous_release_published_at.tzinfo is None:
             previous_release_published_at = previous_release_published_at.astimezone(
                 datetime.timezone.utc
@@ -214,7 +219,9 @@ class GitHubConnector(GitConnector):
                 name=self.configuration.next_version_name,
                 tag=self.current,
                 start_date=previous_release_published_at,
-                end_date=datetime.datetime.now(datetime.timezone.utc),
+                end_date=datetime.datetime.now(
+                    datetime.timezone.utc
+                ),  # Set timezone of star starred_at to UTC
                 stars=len(
                     list(
                         filter(
