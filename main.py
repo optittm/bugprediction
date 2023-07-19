@@ -253,7 +253,7 @@ def info(ctx, configuration = Provide[Container.configuration], session = Provid
 def check(ctx, configuration = Provide[Container.configuration],
           git_factory_provider = Provide[Container.git_factory_provider.provider],
           jira_connector_provider = Provide[Container.jira_connector_provider.provider],
-          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]),
+          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider],
           survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
