@@ -216,4 +216,4 @@ If a rule cannot be interpreted, it will be ignored by the program. For example,
 }
 ```
 
-Then the rule will be ignored by the program.
+Then the rule will be ignored by the program because it's imposible to define the range without a right boundary.
