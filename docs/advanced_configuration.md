@@ -146,7 +146,7 @@ The `[]` operator is used to specify a range of versions, including both version
 
 ```
 
-Then for all versions greater than 1.0.0 (inclusive) and less than 2.0.0 (inclusive), the restriction will be ["path_1"]. In addition, two versions is specified without an operator, the default operator used is `[]`.
+Then for all versions greater than 1.0.0 (inclusive) and less than 2.0.0 (inclusive), the restriction will be ["path_1"]. In addition, if two versions are specified without an operator, the default operator used is `[]`.
 
 #### The `][` Operator
 
