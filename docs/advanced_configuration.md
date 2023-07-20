@@ -32,7 +32,7 @@ The advanced configuration allows you to specify a more precise configuration us
 
 The operators that can be used in the configuration are ==, !=, <=, >=, <, >, [], ][, ]], [[ and *. The * operator means all versions without restriction. It is important to note that all rules are inclusive, meaning that if two or more rules match the same version, the combination of these rules will be used to include or exclude the folders.
 
-In the example above, the first entry specifies that for versions less than or equal to 1.0.0, the folders "path/to/folder1" should be included or excluded except for the version 1.0.0, the folder "path/to/folder1" and "path/to/folder2" should be included or excluded. The second entry specifies that for versions greater than or equal to 1.0.0 but also lower than 3.0.0 included, the folder "path/to/folder3" should be included or excluded. The third entry specifies that for all other versions, the folder "path/to/folder4" should be included or excluded.
+In the example above, the first entry specifies that for versions less than or equal to 1.0.0, the folders "path/to/folder1" should be included or excluded. The second entry specifies that for versions greater than or equal to 1.0.0 but also lower than 3.0.0 included, the folder "path/to/folder3" should be included or excluded. The third entry specifies that for all other versions, the folder "path/to/folder4" should be included or excluded.
 
 #### The `==` Operator
 
