@@ -136,7 +136,7 @@ Then for all versions greater than 1.0.0 (inclusive) and less than 2.0.0 (exclus
 
 #### The `[]` Operator
 
-The `[]` operator is used to specify a range of versions, excluding both endpoints. For example, if the configuration is:
+The `[]` operator is used to specify a range of versions, including both versions. For example, if the configuration is:
 
 ```json
 {
