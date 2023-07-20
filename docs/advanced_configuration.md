@@ -163,7 +163,7 @@ Then for all versions greater than 1.0.0 (exclusive) and less than 2.0.0 (exclus
 
 #### The `*` Operator
 
-The `*` operator matches any version without restriction. For example, if the configuration is:
+The `*` operator matches any version without restriction. It acts as the default rule if no other is specified. For example, if the configuration is:
 
 ```json
 {
