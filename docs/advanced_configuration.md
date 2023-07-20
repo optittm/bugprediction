@@ -110,7 +110,7 @@ Then for all versions greater than 2.0.0 (exclusive), the restriction will be ["
 
 #### The `]]` Operator
 
-The `]]` operator is used to specify a range of versions, excluding both endpoints. For example, if the configuration is:
+The `]]` operator is used to specify a range of versions, excluding the left version. For example, if the configuration is:
 
 ```json
 {
