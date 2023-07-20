@@ -255,7 +255,7 @@ def info(ctx, configuration = Provide[Container.configuration], session = Provid
 def check(ctx, configuration = Provide[Container.configuration],
           git_factory_provider = Provide[Container.git_factory_provider.provider],
           jira_connector_provider = Provide[Container.jira_connector_provider.provider],
-          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]),
+          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider],
           survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
@@ -330,7 +330,6 @@ def populate(ctx, skip_versions,
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     restrict_folder = RestrictFolder(versions, configuration)
-    legacy = legacy_connector_provider(project.project_id, repo_dir)
     for version in versions:
         process = subprocess.run([configuration.scm_path, "checkout", version.tag],
                                 stdout=subprocess.PIPE,
@@ -339,6 +338,8 @@ def populate(ctx, skip_versions,
 
         with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version), 
                                        restrict_folder.get_exclude_folders(version)) as tmp_work_dir:
+            
+            legacy = legacy_connector_provider(project.project_id, tmp_work_dir)
             legacy.get_legacy_files(version)
 
             # Get statistics from git log with codemaat
