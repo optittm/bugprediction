@@ -125,16 +125,6 @@ class GitHubConnector(GitConnector):
         self.session.add_all(new_bugs)
         self.session.commit()
 
-    def get_bugs_issues(self):
-        logging.info("GitHubConnector: get_bugs_issues")
-        issues = list(
-            self.remote.get_issues(
-                state="all", labels=self.configuration.scm_issues_labels.split(",")
-            )
-        )
-
-        return issues
-
     @timeit
     def create_versions(self):
         """
