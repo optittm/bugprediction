@@ -1,7 +1,10 @@
+import glob
+import logging
 import os
 import shutil
 import fnmatch
 import tempfile
+from typing import List
 
 class TmpDirCopyFilteredWithEnv(tempfile.TemporaryDirectory):
 
@@ -22,6 +25,10 @@ class TmpDirCopyFilteredWithEnv(tempfile.TemporaryDirectory):
     def __copy_dirs_filtered(self):
         if self.__include_folders:
             self.__copy_included_dirs_only()
+            if len(os.listdir(self.name)) == 0:
+                logging.warning("All file precised are missing or every file include are also exclude")
+                logging.warning("The filter is ignored")
+                self.__copy_all_tree()
         else:
             self.__copy_all_tree()
 
@@ -29,7 +36,8 @@ class TmpDirCopyFilteredWithEnv(tempfile.TemporaryDirectory):
         for d in self.__include_folders:
             src = os.path.join(self.__src_dir, d)
             dst = os.path.join(self.name, d)
-            shutil.copytree(src, dst, ignore=self.__ignore_function)
+            if os.path.exists(src):
+                shutil.copytree(src, dst, ignore=self.__ignore_function)
 
     def __copy_all_tree(self):
         shutil.copytree(self.__src_dir, self.name, ignore=self.__ignore_function,dirs_exist_ok=True)

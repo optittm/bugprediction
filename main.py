@@ -9,6 +9,7 @@ import tempfile
 from xmlrpc.client import boolean
 
 import click
+import semver
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing
@@ -36,6 +37,7 @@ from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
 from utils.dirs import TmpDirCopyFilteredWithEnv
 from utils.gitfactory import GitConnectorFactory
+from utils.restrict_folder import RestrictFolder
 import utils.math as mt
 
 def lint_aliases(raw_aliases) -> boolean:
@@ -253,7 +255,7 @@ def info(ctx, configuration = Provide[Container.configuration], session = Provid
 def check(ctx, configuration = Provide[Container.configuration],
           git_factory_provider = Provide[Container.git_factory_provider.provider],
           jira_connector_provider = Provide[Container.jira_connector_provider.provider],
-          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]),
+          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider],
           survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
@@ -324,19 +326,20 @@ def populate(ctx, skip_versions,
     
     git.populate_db(skip_versions)
     survey.populate_comments()
-
+    
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
-    legacy = legacy_connector_provider(project.project_id, repo_dir)
+    restrict_folder = RestrictFolder(versions, configuration)
     for version in versions:
         process = subprocess.run([configuration.scm_path, "checkout", version.tag],
                                 stdout=subprocess.PIPE,
                                 cwd=repo_dir)
         logging.info('Executed command line: ' + ' '.join(process.args))
 
-        with TmpDirCopyFilteredWithEnv(repo_dir, configuration.include_folders, 
-                                       configuration.exclude_folders) as tmp_work_dir:
-
+        with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version), 
+                                       restrict_folder.get_exclude_folders(version)) as tmp_work_dir:
+            
+            legacy = legacy_connector_provider(project.project_id, tmp_work_dir)
             legacy.get_legacy_files(version)
 
             # Get statistics from git log with codemaat
