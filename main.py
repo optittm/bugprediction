@@ -21,6 +21,8 @@ from configuration import Configuration
 from connectors.jira import JiraConnector
 from sqlalchemy.orm import sessionmaker
 from dependency_injector import providers
+from exceptions.topsis_configuration import InvalidAlternativeError, InvalidCriterionError, MissingWeightError, NoAlternativeProvidedError, NoCriteriaProvidedError
+from utils.alternatives import AlternativesParser
 
 from utils.container import Container
 from exceptions.configurationvalidation import ConfigurationValidationException
@@ -32,6 +34,7 @@ from models.model import Model
 from models.database import setup_database
 from connectors.git import GitConnector
 from connectors.glpi import GlpiConnector
+from utils.criterion import CriterionParser
 from utils.metricfactory import MetricFactory
 from utils.mlfactory import MlFactory
 from utils.database import get_included_and_current_versions_filter
@@ -302,7 +305,7 @@ def populate(ctx, skip_versions,
         elif source_bugs.strip() == 'glpi':
             glpi: GlpiConnector = glpi_connector_provider(project.project_id)
     
-    survey = survey_connector_provider()
+    # survey = survey_connector_provider()
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
@@ -325,7 +328,7 @@ def populate(ctx, skip_versions,
             # if we use code maat git.setup_aliases(configuration.author_alias)
     
     git.populate_db(skip_versions)
-    survey.populate_comments()
+    # survey.populate_comments()
     
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
@@ -396,6 +399,27 @@ def topsis(
            session = Provide[Container.session], 
            configuration: Configuration = Provide[Container.configuration]
            ):
+    """
+    Perform TOPSIS analysis on a dataset.
+
+    Args:
+        session (Session, optional): The database session. Defaults to the provided container session.
+        configuration (Configuration, optional): The configuration settings for TOPSIS analysis. Defaults to the provided container configuration.
+
+    Returns:
+        dict: A dictionary containing the weights of alternatives after TOPSIS analysis.
+
+    Note:
+        This command performs the TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution) analysis on a given dataset to determine the weights of alternatives based on criteria and their corresponding weights provided in the configuration.
+
+    Raises:
+        Various exceptions from CriterionParser and AlternativesParser classes:
+        - InvalidCriterionError: If an invalid criterion name is encountered.
+        - MissingWeightError: If some criteria are missing weights.
+        - NoCriteriaProvidedError: If no criteria are provided.
+        - InvalidAlternativeError: If an invalid alternative name is encountered.
+        - NoAlternativeProvidedError: If no alternatives are provided.
+    """
     excluded_versions = configuration.exclude_versions
     included_and_current_versions = get_included_and_current_versions_filter(session, configuration)
 
@@ -410,42 +434,68 @@ def topsis(
     df = pd.read_sql(metrics_statement, session.get_bind())
 
     # Prepare data for topsis
-    alternative_data = {
-        'bug_velocity': preprocessing.normalize([df['bug_velocity'].to_numpy()]),
-        'changes': preprocessing.normalize([df['changes'].to_numpy()]),
-        'avg_team_xp': preprocessing.normalize([df['avg_team_xp'].to_numpy()]),
-        'avg_complexity': preprocessing.normalize([df['lizard_avg_complexity'].to_numpy()]),
-        'code_churn': preprocessing.normalize([df['code_churn_avg'].to_numpy()])
-    }
-    criteria_data = {
-        'bugs': preprocessing.normalize([df['bugs'].to_numpy()])
-    }
-    
+    criteria_parser = CriterionParser()
+    alternative_parser = AlternativesParser()
+
+    criteria_names = configuration.topsis_criteria
+    criteria_weights = configuration.topsis_weigths
+
+    try:
+        criteria = criteria_parser.parse_criteria(criteria_names, criteria_weights)
+    except (InvalidCriterionError, MissingWeightError, NoCriteriaProvidedError) as e:
+        print(f"Error: {e}")
+        return
+
+    alternative_names = configuration.topsis_alternatives
+
+    try:
+        alternatives = alternative_parser.parse_alternatives(alternative_names)
+    except (InvalidAlternativeError, NoAlternativeProvidedError) as e:
+        print(f"Error: {e}")
+        return
+
+    # Prepare data for alternatives
+    alternative_data = {}
+    for alternative in alternatives:
+        data = alternative.get_data(df)
+        alternative_data[alternative.get_name()] = preprocessing.normalize(data)
+
     # Create the decision matrix
     decision_matrix_builder = mt.Math.DecisionMatrixBuilder()
 
-    for criterion, data in criteria_data.items():
-        decision_matrix_builder.add_criteria(data, criterion)
+    # Add criteria to the decision matrix
+    for criterion in criteria:
+        decision_matrix_builder.add_criteria(criterion.get_data(df), criterion.get_name())
 
-    for alternative, data in alternative_data.items():
-        decision_matrix_builder.add_alternative(data, alternative)
+    # Add alternatives to the decision matrix
+    for alternative in alternatives:
+        decision_matrix_builder.add_alternative(alternative.get_data(df), alternative.get_name())
 
+    # Set correlation methods if provided in the configuration
     methods = []
     for method in configuration.topsis_corr_method:
         methods.append(mt.Math.get_correlation_methods_from_name(method))
     
-    decision_matrix_builder.set_correlation_methods(methods)
+    if methods or len(methods) > 0:
+        decision_matrix_builder.set_correlation_methods(methods)
 
+    # Build the decision matrix
     decision_matrix = decision_matrix_builder.build()
     print(decision_matrix.matrix)
 
     # Compute topsis
-    ts = mt.Math.TOPSIS(decision_matrix, [1], [mt.Math.TOPSIS.MAX])
+    ts = mt.Math.TOPSIS(
+        decision_matrix,
+        [criterion.get_weight() for criterion in criteria], 
+        [criterion.get_direction() for criterion in criteria]
+    )
     ts.topsis()
 
+    # Calculate the weights of alternatives after TOPSIS analysis
     weight = ts.get_closeness()
     weight = weight / sum(weight)
 
+    # Prepare the output dictionary containing the weights of alternatives
     output = {}
     for key, value in decision_matrix_builder.alternatives_dict.items():
         output[key] = weight[value]
@@ -453,6 +503,7 @@ def topsis(
     total = sum(output.values())
     print(total)
 
+    # Display the weights of alternatives
     print("**********************")
     print("* ALTERNATIVES WEIGHTS *")
     print("**********************")
