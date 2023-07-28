@@ -104,6 +104,8 @@ One of the features of the report is to assess the risk of releasing the next ve
 
 See the [list of commands](./docs/commands.md) for other options.
 
+Please refer to the [advanced configuration documentation](./docs/advanced_configuration.md) for a more precise configuration.
+
 ## Connecting with Survey
 
 BugPrediction can be connected with our [Survey tool](https://github.com/optittm/survey-back-api) to retrieve user feedback and add it to the database. To do so, you need to start the Survey API server and add the following environment variables to the .env file:    
