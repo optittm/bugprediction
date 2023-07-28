@@ -46,18 +46,14 @@ class GitHubConnector(GitConnector):
         if not sort:
             sort = None
 
-        if self.configuration.use_all_tags:
-            try:
+        try:
+            if self.configuration.use_all_tags:
                 return self.remote.get_tags()
-            except github.GithubException.RateLimitExceededException:
-                sleep(self.configuration.retry_delay)
-                self._get_git_versions(all, order_by, sort)
-        else:
-            try:
+            else:
                 return self.remote.get_releases()
-            except github.GithubException.RateLimitExceededException:
-                sleep(self.configuration.retry_delay)
-                self._get_git_versions(all, order_by, sort)
+        except github.GithubException.RateLimitExceededException:
+            sleep(self.configuration.retry_delay)
+            self._get_git_versions(all, order_by, sort)
         
     @timeit
     def create_issues(self):
