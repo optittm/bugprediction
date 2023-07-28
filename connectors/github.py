@@ -58,8 +58,6 @@ class GitHubConnector(GitConnector):
         """
         logging.info("GitHubConnector: create_issues")
 
-        print("CONFIGURATION :", self.configuration.issue_tags)
-
         # Check if a database already exist
         last_issue = (
             self.session.query(Issue)
@@ -137,7 +135,22 @@ class GitHubConnector(GitConnector):
         versions = []
         previous_release_published_at = self._get_first_commit_date()
 
+        stars = list(self.remote.get_stargazers_with_dates())
+        forks = list(self.remote.get_forks())
+        subscribers = list(self.remote.get_subscribers())
+
         for release in releases.reversed:
+            # Set UTC Timezone for previous release and release published_at when they are None
+            if previous_release_published_at.tzinfo is None:
+                previous_release_published_at = (
+                    previous_release_published_at.astimezone(datetime.timezone.utc)
+                )
+
+            if release.published_at.tzinfo is None:
+                release_published_at_timezone = release.published_at.astimezone(
+                    datetime.timezone.utc
+                )
+
             versions.append(
                 Version(
                     project_id=self.project_id,
@@ -145,18 +158,103 @@ class GitHubConnector(GitConnector):
                     tag=release.tag_name,
                     start_date=previous_release_published_at,
                     end_date=release.published_at,
+                    stars=len(
+                        list(
+                            filter(
+                                # Set timezone of star starred_at to UTC
+                                lambda star: star.starred_at.astimezone(
+                                    datetime.timezone.utc
+                                )
+                                >= previous_release_published_at
+                                and star.starred_at.astimezone(datetime.timezone.utc)
+                                <= release_published_at_timezone,
+                                stars,
+                            )
+                        )
+                    ),
+                    forks=len(
+                        list(
+                            filter(
+                                # Set timezone of fork created_at to UTC
+                                lambda fork: fork.created_at.astimezone(
+                                    datetime.timezone.utc
+                                )
+                                >= previous_release_published_at
+                                and fork.created_at.astimezone(datetime.timezone.utc)
+                                <= release_published_at_timezone,
+                                forks,
+                            )
+                        )
+                    ),
+                    subscribers=len(
+                        list(
+                            filter(
+                                # Set timezone of subscriber created_at to UTC
+                                lambda subscriber: subscriber.created_at.astimezone(
+                                    datetime.timezone.utc
+                                )
+                                >= previous_release_published_at
+                                and subscriber.created_at.astimezone(
+                                    datetime.timezone.utc
+                                )
+                                <= release_published_at_timezone,
+                                subscribers,
+                            )
+                        )
+                    ),
                 )
             )
             previous_release_published_at = release.published_at
 
         # Put current branch at the end of the list
+        # Set UTC Timezone for previous release published_at when it's None
+        if previous_release_published_at.tzinfo is None:
+            previous_release_published_at = previous_release_published_at.astimezone(
+                datetime.timezone.utc
+            )
+
         versions.append(
             Version(
                 project_id=self.project_id,
                 name=self.configuration.next_version_name,
                 tag=self.current,
                 start_date=previous_release_published_at,
-                end_date=datetime.datetime.now(),
+                end_date=datetime.datetime.now(
+                    datetime.timezone.utc
+                ),  # Set timezone of star starred_at to UTC
+                stars=len(
+                    list(
+                        filter(
+                            lambda star: star.starred_at.astimezone(
+                                datetime.timezone.utc
+                            )
+                            >= previous_release_published_at,
+                            stars,
+                        )
+                    )
+                ),
+                forks=len(
+                    list(
+                        filter(
+                            lambda fork: fork.created_at.astimezone(
+                                datetime.timezone.utc
+                            )
+                            >= previous_release_published_at,
+                            forks,
+                        )
+                    )
+                ),
+                subscribers=len(
+                    list(
+                        filter(
+                            lambda subscriber: subscriber.created_at.astimezone(
+                                datetime.timezone.utc
+                            )
+                            >= previous_release_published_at,
+                            subscribers,
+                        )
+                    )
+                ),
             )
         )
         self.session.add_all(versions)

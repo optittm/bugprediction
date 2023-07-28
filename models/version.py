@@ -4,10 +4,12 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.hybrid import hybrid_method
 from models.database import Base
 
+
 class Version(Base):
     """
     Versions end when they are published
     """
+
     __tablename__ = "version"
     version_id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("project.project_id"))
@@ -19,6 +21,12 @@ class Version(Base):
     start_date = Column(DateTime)
     # the release date
     end_date = Column(DateTime)
+    # Number of stars in the version
+    stars = Column(Integer)
+    # Number of forks in the version
+    forks = Column(Integer)
+    # Number of subscribers in the version
+    subscribers = Column(Integer)
     # Number of bugs in the version
     bugs = Column(Integer)
     # Rough estimate of the volume of changes
