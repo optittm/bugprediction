@@ -1,5 +1,6 @@
 import logging
 from time import sleep, time
+from typing import List, Union
 import github
 
 from sqlalchemy import desc, update
@@ -8,6 +9,9 @@ import models
 from models.issue import Issue
 from models.version import Version
 from github import Github
+from github.GitRelease import GitRelease
+from github.Tag import Tag
+from github.PaginatedList import PaginatedList
 import datetime
 from connectors.git import GitConnector
 from utils.timeit import timeit
@@ -34,7 +38,7 @@ class GitHubConnector(GitConnector):
             sleep(self.configuration.retry_delay)
             self._get_issues(since, labels)
     
-    def _get_releases(self, all=None, order_by=None, sort=None):
+    def _get_git_versions(self, all=None, order_by=None, sort=None) -> List[Union[GitRelease, Tag]]:
         if not all:
             all = None
         if not order_by:
@@ -42,11 +46,18 @@ class GitHubConnector(GitConnector):
         if not sort:
             sort = None
 
-        try:
-            return self.remote.get_releases()
-        except github.GithubException.RateLimitExceededException:
-            sleep(self.configuration.retry_delay)
-            self._get_releases(all, order_by, sort)
+        if self.configuration.use_all_tags:
+            try:
+                return self.remote.get_tags()
+            except github.GithubException.RateLimitExceededException:
+                sleep(self.configuration.retry_delay)
+                self._get_git_versions(all, order_by, sort)
+        else:
+            try:
+                return self.remote.get_releases()
+            except github.GithubException.RateLimitExceededException:
+                sleep(self.configuration.retry_delay)
+                self._get_git_versions(all, order_by, sort)
         
     @timeit
     def create_issues(self):
@@ -115,23 +126,35 @@ class GitHubConnector(GitConnector):
         Create versions into the database from GitHub tags
         """
         logging.info('GitHubConnector: create_versions')
-        releases = self._get_releases()
+        git_versions = self._get_git_versions()
         self._clean_project_existing_versions()
 
         versions = []
         previous_release_published_at = self._get_first_commit_date()
 
-        for release in releases.reversed:
-            versions.append(
-                Version(
-                    project_id=self.project_id,
-                    name=release.title,
-                    tag=release.tag_name,
-                    start_date=previous_release_published_at,
-                    end_date=release.published_at,
+        for v in git_versions.reversed:
+            if type(v) is GitRelease:
+                versions.append(
+                    Version(
+                        project_id=self.project_id,
+                        name=v.title,
+                        tag=v.tag_name,
+                        start_date=previous_release_published_at,
+                        end_date=v.published_at,
+                    )
                 )
-            )
-            previous_release_published_at = release.published_at
+                previous_release_published_at = v.published_at
+            elif type(v) is Tag:
+                versions.append(
+                    Version(
+                        project_id=self.project_id,
+                        name=v.name,
+                        tag=v.name,
+                        start_date=previous_release_published_at,
+                        end_date=v.commit.commit.committer.date,
+                    )
+                )
+                previous_release_published_at = v.commit.commit.committer.date
 
         # Put current branch at the end of the list
         versions.append(

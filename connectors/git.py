@@ -187,5 +187,5 @@ class GitConnector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_releases(self, all, order_by, sort):
+    def _get_git_versions(self, all, order_by, sort):
         raise NotImplementedError
