@@ -1,3 +1,4 @@
+import csv
 import os
 import re
 import sys
@@ -16,7 +17,7 @@ from sklearn import preprocessing
 import sqlalchemy as db
 from sqlalchemy.exc import ArgumentError
 from dependency_injector.wiring import Provide, inject
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 from configuration import Configuration
 from connectors.jira import JiraConnector
 from sqlalchemy.orm import sessionmaker
@@ -393,7 +394,7 @@ def populate(
         elif source_bugs.strip() == 'glpi':
             glpi: GlpiConnector = glpi_connector_provider(project.project_id)
     
-    survey = survey_connector_provider()
+    # survey = survey_connector_provider()
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
@@ -417,7 +418,7 @@ def populate(
             # if we use code maat git.setup_aliases(configuration.author_alias)
 
     git.populate_db(skip_versions)
-    survey.populate_comments()
+    # survey.populate_comments()
     
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
@@ -485,8 +486,102 @@ def main():
 # For research purposes only                                        #
 #####################################################################
 
+@cli.command()
+@click.option("--dataset-dir", default="./data/dataset", help="The path to the dataset directory.")
+@click.option("--output-file", default="./data/research/topsis_output.csv", help="The name of the output CSV file.")
+@inject
+def datasetgen(dataset_dir, output_file, configuration: Configuration = Provide[Container.configuration]):
+    """
+    Generate datasets for TOPSIS analysis from multiple projects in the dataset directory.
+
+    Args:
+        dataset_dir (str): The path to the dataset directory.
+        output_file (str): The name of the output CSV file.
+        configuration (Configuration, optional): The configuration settings for TOPSIS analysis. Defaults to the provided container configuration.
+
+    Note:
+        This command iterates through the projects in the dataset directory and loads the corresponding .env configuration files.
+        It uses the configuration from the .env files and constructs a SQLite database path for each project.
+        The TOPSIS analysis is then performed for each project using the specific configuration, and the results are written to CSV files.
+        The output CSV files are saved in the respective project folders.
+
+    Raises:
+        None.
+    """
+    for project_folder in os.listdir(dataset_dir):
+        # print(project_folder)
+        project_path = os.path.join(dataset_dir, project_folder)
+
+        # Check if it's a directory and contains .env file
+        if os.path.isdir(project_path) and ".env" in os.listdir(project_path):
+            # Load the .env configuration for this project
+            env_file_path = os.path.join(project_path, ".env")
+            env_var = dotenv_values(env_file_path)
+
+            configuration.source_repo_scm = env_var.get("OTTM_SOURCE_REPO_SCM")
+            configuration.source_repo_url = env_var.get("OTTM_SOURCE_REPO_URL")
+            configuration.current_branch = env_var.get("OTTM_CURRENT_BRANCH")
+            configuration.source_bugs = env_var.get("OTTM_SOURCE_BUGS")
+            configuration.source_repo = env_var.get("OTTM_SOURCE_REPO")
+            configuration.source_project = env_var.get("OTTM_SOURCE_PROJECT")
+            configuration.target_database = f"sqlite:///{project_path}/{configuration.source_project}.sqlite3"
+            print("Current db : ", configuration.source_project)
+            print(configuration.target_database)
+
+            # Créer un nouveau moteur SQLAlchemy
+            new_engine = db.create_engine(configuration.target_database)
+
+            # Créer une nouvelle session à partir du nouveau moteur
+            Session = sessionmaker()
+            Session.configure(bind=new_engine)
+
+            # Remplacer l'ancienne session par la nouvelle dans le conteneur
+            container.session.override(providers.Singleton(Session))
+            
+
+            # Call the topsis command with the project-specific configuration
+            configuration.topsis_corr_method = []
+            topsis_output = topsis()
+
+            # Write topsis_output to CSV file
+            write_output_to_csv(configuration.source_repo, topsis_output, output_file)
 
 @cli.command()
+@inject
+def display_topsis_weight():
+    """
+    Perform TOPSIS analysis on a dataset.
+
+    Args:
+        session (Session, optional): The database session. Defaults to the provided container session.
+        configuration (Configuration, optional): The configuration settings for TOPSIS analysis. Defaults to the provided container configuration.
+
+    Returns:
+        dict: A dictionary containing the weights of alternatives after TOPSIS analysis.
+
+    Note:
+        This command performs the TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution) analysis on a given dataset to determine the weights of alternatives based on criteria and their corresponding weights provided in the configuration.
+
+    Raises:
+        Various exceptions from CriterionParser and AlternativesParser classes:
+        - InvalidCriterionError: If an invalid criterion name is encountered.
+        - MissingWeightError: If some criteria are missing weights.
+        - NoCriteriaProvidedError: If no criteria are provided.
+        - InvalidAlternativeError: If an invalid alternative name is encountered.
+        - NoAlternativeProvidedError: If no alternatives are provided.
+    """
+    output = topsis()
+
+    # Display the weights of alternatives
+    print("**********************")
+    print("* ALTERNATIVES WEIGHTS *")
+    print("**********************")
+    for key, value in output.items():
+        print("* " + key + " : ", value)
+    print("**********************")
+
+    return output
+
 @inject
 def topsis( 
            session = Provide[Container.session], 
@@ -579,7 +674,6 @@ def topsis(
 
     # Build the decision matrix
     decision_matrix = decision_matrix_builder.build()
-    print(decision_matrix.matrix)
 
     # Compute topsis
     ts = mt.Math.TOPSIS(
@@ -598,19 +692,40 @@ def topsis(
     for key, value in decision_matrix_builder.alternatives_dict.items():
         output[key] = weight[value]
 
-    total = sum(output.values())
-    print(total)
-
-    # Display the weights of alternatives
-    print("**********************")
-    print("* ALTERNATIVES WEIGHTS *")
-    print("**********************")
-    for key, value in output.items():
-        print("* " + key + " : ", value)
-    print("**********************")
-
     return output
 
+
+def write_output_to_csv(project_name, output_dict, output_file_path):
+    """
+    Write the dictionary and project name to a CSV file.
+
+    Args:
+        project_name (str): The name of the project.
+        output_dict (dict): The dictionary to be saved in CSV.
+        output_file_path (str): The file path for the CSV output.
+
+    Returns:
+        None.
+    """
+    # Create the directory if it does not exist
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
+
+    # Check if the file already exists
+    file_exists = os.path.isfile(output_file_path)
+
+    # Open the file in 'a' mode (append mode) to create if it doesn't exist
+    with open(output_file_path, mode="a", newline="") as output_file:
+        fieldnames = ["Project"] + list(output_dict.keys())
+        writer = csv.DictWriter(output_file, fieldnames=fieldnames)
+
+        # Write header only if the file is newly created
+        if not file_exists:
+            writer.writeheader()
+
+        # Create a new row with the project name and dictionary values
+        row = {"Project": project_name}
+        row.update(output_dict)
+        writer.writerow(row)
 
 #####################################################################
 
