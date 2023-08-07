@@ -253,7 +253,7 @@ def info(ctx, configuration = Provide[Container.configuration], session = Provid
 def check(ctx, configuration = Provide[Container.configuration],
           git_factory_provider = Provide[Container.git_factory_provider.provider],
           jira_connector_provider = Provide[Container.jira_connector_provider.provider],
-          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider]),
+          glpi_connector_provider = Provide[Container.glpi_connector_provider.provider],
           survey_connector_provider = Provide[Container.survey_connector_provider.provider]):
     """Check the consistency of the configuration and perform basic tests"""
     tmp_dir = tempfile.mkdtemp()
@@ -300,7 +300,7 @@ def populate(ctx, skip_versions,
         elif source_bugs.strip() == 'glpi':
             glpi: GlpiConnector = glpi_connector_provider(project.project_id)
     
-    survey = survey_connector_provider()
+    # survey = survey_connector_provider()
 
     # Checkout, execute the tool and inject CSV result into the database
     # with tempfile.TemporaryDirectory() as tmp_dir:
@@ -323,7 +323,7 @@ def populate(ctx, skip_versions,
             # if we use code maat git.setup_aliases(configuration.author_alias)
     
     git.populate_db(skip_versions)
-    survey.populate_comments()
+    # survey.populate_comments()
 
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
