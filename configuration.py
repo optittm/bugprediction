@@ -77,6 +77,9 @@ class Configuration:
         self.legacy_minimum_days = self.__get_int("OTTM_LEGACY_MINIMUM_DAYS", 365)
 
         self.topsis_corr_method = self.__get_str_list("OTTM_CORR_METHOD")
+        self.topsis_criteria = self.__get_str_list("OTTM_CRITERIA")
+        self.topsis_alternatives = self.__get_str_list("OTTM_ALTERNATIVES")
+        self.topsis_weigths = self.__get_str_list("OTTM_WEIGTHS")
 
     @staticmethod
     def __get_log_level(env_var):
