@@ -12,6 +12,7 @@ from connectors.git import GitConnector
 from gitlab import Gitlab
 from datetime import datetime, timedelta
 
+
 class GitLabConnector(GitConnector):
     """
     Connector to GitLab
@@ -20,18 +21,25 @@ class GitLabConnector(GitConnector):
     -----------
      - base_url     URL to GitLab, empty if gitlab.com
     """
-    def __init__(self, project_id, directory, base_url, token, repo, current, session, config):
-        GitConnector.__init__(self, project_id, directory, token, repo, current, session, config)
+
+    def __init__(
+        self, project_id, directory, base_url, token, repo, current, session, config
+    ):
+        GitConnector.__init__(
+            self, project_id, directory, token, repo, current, session, config
+        )
         if not base_url and not self.token:
             logging.info("anonymous read-only access for public resources (GitLab.com)")
             self.api = Gitlab()
         if base_url and self.token:
-            logging.info("private token or personal token authentication (self-hosted GitLab instance)")
+            logging.info(
+                "private token or personal token authentication (self-hosted GitLab instance)"
+            )
             self.api = Gitlab(url=base_url, private_token=self.token)
         if not base_url and self.token:
             logging.info("private token or personal token authentication (GitLab.com)")
             self.api = Gitlab(private_token=self.token)
-        
+
         # Check the authentification. Doesn't work for public read only access
         if base_url or self.token:
             self.api.auth()
@@ -45,11 +53,13 @@ class GitLabConnector(GitConnector):
             labels = None
 
         try:
-            return self.remote.issues.list(state="all", since=since, with_labels_details=labels, get_all=True)
+            return self.remote.issues.list(
+                state="all", since=since, with_labels_details=labels, get_all=True
+            )
         except gitlab.GitlabJobRetryError:
             sleep(self.configuration.retry_delay)
             self._get_issues(since, labels)
-    
+
     def _get_releases(self, all, order_by, sort):
         if not all:
             all = None
@@ -57,57 +67,68 @@ class GitLabConnector(GitConnector):
             order_by = None
         if not sort:
             sort = None
-            
+
         try:
-            return self.remote.releases.list(all=all, order_by=order_by,sort=sort)
+            return self.remote.releases.list(all=all, order_by=order_by, sort=sort)
         except gitlab.GitlabJobRetryError:
             sleep(self.configuration.retry_delay)
             self._get_releases(all, order_by, sort)
-        
+
     @timeit
     def create_issues(self):
         """
         Create issues into the database from GitLab Issues
         """
-        logging.info('GitLabConnector: create_issues')
+        logging.info("GitLabConnector: create_issues")
 
         # Check if a database already exist
-        last_issue = self.session.query(Issue) \
-                         .filter(Issue.project_id == self.project_id) \
-                         .filter(Issue.source == 'git') \
-                         .order_by(desc(Issue.updated_at)).first()
+        last_issue = (
+            self.session.query(Issue)
+            .filter(Issue.project_id == self.project_id)
+            .filter(Issue.source == "git")
+            .order_by(desc(Issue.updated_at))
+            .first()
+        )
         if last_issue is not None:
             # Update existing database by fetching new issues
-            if not self.configuration.issue_tags:
-                git_issues = self._get_issues(since=last_issue.updated_at + timedelta(seconds=1), labels=None)
+            if len(self.configuration.issue_tags) == 0:
+                git_issues = self._get_issues(
+                    since=last_issue.updated_at + timedelta(seconds=1), labels=None
+                )
             else:
-                git_issues = self._get_issues(since=last_issue.updated_at + timedelta(seconds=1),
-                                                    labels=self.configuration.issue_tags)  # e.g. Filter by labels=['bug']
+                git_issues = self._get_issues(
+                    since=last_issue.updated_at + timedelta(seconds=1),
+                    labels=self.configuration.issue_tags,
+                )  # e.g. Filter by labels=['bug']
         else:
             # Create a database with all issues
-            if not self.configuration.issue_tags:
+            if len(self.configuration.issue_tags) == 0:
                 git_issues = self._get_issues(since=None, labels=None)
             else:
-                git_issues = self._get_issues(labels=self.configuration.issue_tags)    # e.g. Filter by labels=['bug']
-        
+                git_issues = self._get_issues(
+                    labels=self.configuration.issue_tags
+                )  # e.g. Filter by labels=['bug']
+
         # versions = self.session.query(Version).all
-        logging.info('Syncing ' + str(len(git_issues)) + ' issue(s) from GitLab')
+        logging.info("Syncing " + str(len(git_issues)) + " issue(s) from GitLab")
 
         new_bugs = []
         # for version in versions:
         for issue in git_issues:
             # Check if the issue is linked to a selected version (included or not +IN?.§ .?NBVCXd)
             # if version.end_date > issue.created_at > version.start_date:
-            if issue.author['username'] not in self.configuration.exclude_issuers:
-                
+            if issue.author["username"] not in self.configuration.exclude_issuers:
                 updated_issue_date = date_iso_8601_to_datetime(issue.updated_at)
                 existing_issue_id = self._get_existing_issue_id(issue.iid)
 
                 if existing_issue_id:
-                    logging.info("Issue %s already exists, updating it", existing_issue_id)
+                    logging.info(
+                        "Issue %s already exists, updating it", existing_issue_id
+                    )
                     self.session.execute(
-                        update(Issue).where(Issue.issue_id == existing_issue_id) \
-                                     .values(title=issue.title, updated_at=updated_issue_date)
+                        update(Issue)
+                        .where(Issue.issue_id == existing_issue_id)
+                        .values(title=issue.title, updated_at=updated_issue_date)
                     )
                 else:
                     new_bugs.append(
@@ -123,13 +144,13 @@ class GitLabConnector(GitConnector):
 
         self.session.add_all(new_bugs)
         self.session.commit()
-    
+
     @timeit
     def create_versions(self):
         """
         Create versions into the database from GitLab releases
         """
-        logging.info('GitLabConnector: create_versions')
+        logging.info("GitLabConnector: create_versions")
         releases = self._get_releases(all=True, order_by="released_at", sort="asc")
         self._clean_project_existing_versions()
 

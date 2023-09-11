@@ -419,7 +419,7 @@ def populate(
 
     git.populate_db(skip_versions)
     # survey.populate_comments()
-    
+
     # List the versions and checkout each one of them
     versions = session.query(Version).filter(Version.project_id == project.project_id).all()
     restrict_folder = RestrictFolder(versions, configuration)
