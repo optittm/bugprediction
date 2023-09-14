@@ -36,7 +36,7 @@ class GitHubConnector(GitConnector):
             labels = github.GithubObject.NotSet
 
         try:
-            return self.remote.get_issues(state="all", since=since, labels=labels)
+            return self.remote.get_issues(state="all", labels=labels)
         except github.GithubException.RateLimitExceededException:
             sleep(self.configuration.retry_delay)
             self._get_issues(since, labels)
@@ -77,7 +77,7 @@ class GitHubConnector(GitConnector):
         )
         if last_issue is not None:
             # Update existing database by fetching new issues
-            if not self.configuration.issue_tags:
+            if len(self.configuration.issue_tags) == 0:
                 git_issues = self._get_issues(
                     since=last_issue.updated_at + datetime.timedelta(seconds=1)
                 )
@@ -88,7 +88,7 @@ class GitHubConnector(GitConnector):
                 )  # e.g. Filter by labels=['bug']
         else:
             # Create a database with all issues
-            if not self.configuration.issue_tags:
+            if len(self.configuration.issue_tags) == 0:
                 git_issues = self._get_issues()
             else:
                 git_issues = self._get_issues(

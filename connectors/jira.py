@@ -68,7 +68,7 @@ class JiraConnector:
 
         jql_query = f'project={self.config.jira_project}'
 
-        if self.config.issue_tags:
+        if len(self.config.issue_tags) > 0:
             labels_as_string = ",".join(self.config.issue_tags)
             jql_query += f' AND labels IN ({labels_as_string})'
 
