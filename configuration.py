@@ -31,9 +31,10 @@ class Configuration:
         self.target_database = self.__get_required_value("OTTM_TARGET_DATABASE")
 
         self.source_repo_scm = self.__get_repo_scm("OTTM_SOURCE_REPO_SCM")
-        self.source_project = self.__get_required_value("OTTM_SOURCE_PROJECT")
-        self.source_repo = self.__get_required_value("OTTM_SOURCE_REPO")
-        self.current_branch = self.__get_required_value("OTTM_CURRENT_BRANCH")
+        self.use_all_tags = self.__get_bool("OTTM_SCM_USE_ALL_TAGS", False)
+        self.source_project  = self.__get_required_value("OTTM_SOURCE_PROJECT")
+        self.source_repo     = self.__get_required_value("OTTM_SOURCE_REPO")
+        self.current_branch  = self.__get_required_value("OTTM_CURRENT_BRANCH")
         self.source_repo_url = self.__get_required_value("OTTM_SOURCE_REPO_URL")
         self.source_bugs = self.__get_str_list("OTTM_SOURCE_BUGS")
 
@@ -204,3 +205,18 @@ class Configuration:
         if not value:
             raise ConfigurationValidationException(f"Value for {env_var} is required")
         return value
+    
+    @staticmethod
+    def __get_bool(env_var, default):
+        parsed_value = os.getenv(env_var)
+        if parsed_value is None:
+            return default
+        if parsed_value.lower() == "true":
+            parsed_bool = True
+        elif parsed_value.lower() == "false":
+            parsed_bool = False
+        else:
+            raise ConfigurationValidationException(
+                f"Incorrect value : {parsed_value}, {env_var} should be a boolean"
+            )
+        return parsed_bool

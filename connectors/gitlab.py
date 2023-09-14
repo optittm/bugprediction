@@ -1,5 +1,6 @@
 import logging
 from time import sleep
+from typing import List, Union
 import gitlab
 
 from sqlalchemy import desc, update
@@ -10,6 +11,8 @@ from utils.date import date_iso_8601_to_datetime
 from utils.timeit import timeit
 from connectors.git import GitConnector
 from gitlab import Gitlab
+from gitlab.v4.objects.tags import ProjectTag
+from gitlab.v4.objects.releases import ProjectRelease
 from datetime import datetime, timedelta
 
 
@@ -59,21 +62,24 @@ class GitLabConnector(GitConnector):
         except gitlab.GitlabJobRetryError:
             sleep(self.configuration.retry_delay)
             self._get_issues(since, labels)
-
-    def _get_releases(self, all, order_by, sort):
+    
+    def _get_git_versions(self, all=None, order_by=None, sort=None) -> List[Union[ProjectRelease, ProjectTag]]:
         if not all:
             all = None
         if not order_by:
             order_by = None
         if not sort:
             sort = None
-
+        
         try:
-            return self.remote.releases.list(all=all, order_by=order_by, sort=sort)
+            if self.configuration.use_all_tags:
+                return self.remote.tags.list(all=all, order_by=order_by, sort=sort)
+            else:
+                return self.remote.releases.list(all=all, order_by=order_by, sort=sort)
         except gitlab.GitlabJobRetryError:
             sleep(self.configuration.retry_delay)
-            self._get_releases(all, order_by, sort)
-
+            self._get_git_versions(all, order_by, sort)
+        
     @timeit
     def create_issues(self):
         """
@@ -150,25 +156,41 @@ class GitLabConnector(GitConnector):
         """
         Create versions into the database from GitLab releases
         """
-        logging.info("GitLabConnector: create_versions")
-        releases = self._get_releases(all=True, order_by="released_at", sort="asc")
+        logging.info('GitLabConnector: create_versions')
+        if self.configuration.use_all_tags:
+            git_versions = self._get_git_versions(all=True, order_by="updated", sort="asc")
+        else:
+            git_versions = self._get_git_versions(all=True, order_by="released_at", sort="asc")
         self._clean_project_existing_versions()
 
         versions = []
         previous_release_published_at = self._get_first_commit_date()
 
-        for release in releases:
-            release_published_at = date_iso_8601_to_datetime(release.released_at)
-            versions.append(
-                Version(
-                    project_id=self.project_id,
-                    name=release.name,
-                    tag=release.tag_name,
-                    start_date=previous_release_published_at,
-                    end_date=release_published_at,
+        for v in git_versions:
+            if type(v) is ProjectRelease:
+                release_published_at = date_iso_8601_to_datetime(v.released_at)
+                versions.append(
+                    Version(
+                        project_id=self.project_id,
+                        name=v.name,
+                        tag=v.tag_name,
+                        start_date=previous_release_published_at,
+                        end_date=release_published_at,
+                    )
                 )
-            )
-            previous_release_published_at = release_published_at
+                previous_release_published_at = release_published_at
+            elif type(v) is ProjectTag:
+                release_published_at = date_iso_8601_to_datetime(v.commit["committed_date"])
+                versions.append(
+                    Version(
+                        project_id=self.project_id,
+                        name=v.name,
+                        tag=v.name,
+                        start_date=previous_release_published_at,
+                        end_date=release_published_at,
+                    )
+                )
+                previous_release_published_at = release_published_at
 
         # Put current branch at the end of the list
         versions.append(
