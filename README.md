@@ -15,7 +15,8 @@ For each release the tool will:
 
 ### Prerequisites
 
-- A project in Java or PHP
+- Python >= 3.11 to run BugPrediction or Docker
+- A project in Java, PHP or Python
 - Source code on GitHub or GitLab
 - Project releases and issues on GitHub, GitLab, Jira or other
 - To analyse a Java project, have Java >= 8 installed
