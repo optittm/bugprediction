@@ -206,18 +206,21 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     )
     ts.topsis()
     
+    # Create a scaled dataframe for alternatives
     scaled_df = pd.DataFrame()
     for alternative in alternatives:
         scaled_df[alternative.get_name()] = alternative.get_data(df)[0]
 
+    # Join original columns back to the scaled dataframe
     old_cols = df[["name", "bugs"]]
     scaled_df = scaled_df.join(old_cols)
 
     # Set XP to 1 day for all versions that are too short (avoid inf values in dataframe)
     scaled_df['avg_team_xp'] = scaled_df['avg_team_xp'].replace({0:1})
     scaled_df["risk_assessment"] = 0
+    
+    # Calculate risk assessment for each alternative
     for alternative in alternatives:
-        # print(ts.get_coef_from_label(alternative.get_name()))
         scaled_df["risk_assessment"] += scaled_df[alternative.get_name()] * ts.get_coef_from_label(alternative.get_name())
 
     # Return risk assessment along with median and max risk scores for all versions
