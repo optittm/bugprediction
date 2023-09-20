@@ -3,6 +3,7 @@ import math
 from datetime import datetime, timedelta
 
 import pandas as pd
+from exceptions.topsis_configuration import InvalidAlternativeError, InvalidCriterionError, MissingWeightError, NoAlternativeProvidedError, NoCriteriaProvidedError
 from sqlalchemy.sql import func
 from sklearn import preprocessing
 import pandas as pd
@@ -14,6 +15,8 @@ from models.version import Version
 from models.metric import Metric
 from models.commit import Commit
 from models.issue import Issue
+from utils.alternatives import AlternativesParser
+from utils.criterion import CriterionParser
 from utils.database import get_included_and_current_versions_filter
 from utils.timeit import timeit
 import utils.math as mt
@@ -153,62 +156,80 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
         .order_by(Version.start_date.asc()).statement
     logging.debug(metrics_statement)
     df = pd.read_sql(metrics_statement, session.get_bind())
+    
+    # Prepare data for topsis
+    criteria_parser = CriterionParser()
+    alternative_parser = AlternativesParser()
 
-    # TODO : we should Remove outliers in the dataframe
-    # while preserving the "Next Release" row
-    # cols = ['pdays', 'campaign', 'previous'] # The columns you want to search for outliers in
-    # # Calculate quantiles and IQR
-    # Q1 = df[cols].quantile(0.25) # Same as np.percentile but maps (0,1) and not (0,100)
-    # Q3 = df[cols].quantile(0.75)
-    # IQR = Q3 - Q1
-    # # Return a boolean array of the rows with (any) non-outlier column values
-    # condition = ~((df[cols] < (Q1 - 1.5 * IQR)) | (df[cols] > (Q3 + 1.5 * IQR))).any(axis=1)
-    #  ---> or (df['name'] == 'Next Release')
-    # # Filter our dataframe based on condition
-    # filtered_df = df[condition]
+    criteria_names = configuration.topsis_criteria
+    criteria_weights = configuration.topsis_weigths
+    alternative_names = configuration.topsis_alternatives
 
-    bugs = df['bugs'].to_numpy()
-    bugs = preprocessing.normalize([bugs])
-    bug_velocity = df['bug_velocity'].to_numpy()
-    bug_velocity = preprocessing.normalize([bug_velocity])
-    changes = df['changes'].to_numpy()
-    changes = preprocessing.normalize([changes])
-    avg_team_xp = df['avg_team_xp'].to_numpy()
-    avg_team_xp = preprocessing.normalize([avg_team_xp])
-    lizard_avg_complexity = df['lizard_avg_complexity'].to_numpy()
-    lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
-    code_churn_avg = df['code_churn_avg'].to_numpy()
-    code_churn_avg = preprocessing.normalize([code_churn_avg])
+    try:
+        criteria = criteria_parser.parse_criteria(criteria_names, criteria_weights)
+    except (InvalidCriterionError, MissingWeightError, NoCriteriaProvidedError) as e:
+        print(f"Error: {e}")
+        return
 
-    scaled_df = pd.DataFrame({
-        'bug_velocity': bug_velocity[0],
-        'changes': changes[0],
-        'avg_team_xp': avg_team_xp[0],
-        'lizard_avg_complexity': lizard_avg_complexity[0],
-        'code_churn_avg': code_churn_avg[0]
-        })
+    try:
+        alternatives = alternative_parser.parse_alternatives(alternative_names)
+    except (InvalidAlternativeError, NoAlternativeProvidedError) as e:
+        print(f"Error: {e}")
+        return
+
+    # Create the decision matrix
+    decision_matrix_builder = mt.Math.DecisionMatrixBuilder()
+
+    # Add criteria to the decision matrix
+    for criterion in criteria:
+        decision_matrix_builder.add_criteria(criterion.get_data(df), criterion.get_name())
+
+    # Add alternatives to the decision matrix
+    for alternative in alternatives:
+        decision_matrix_builder.add_alternative(alternative.get_data(df), alternative.get_name())
+
+    # Set correlation methods if provided in the configuration
+    methods = []
+    for method in configuration.topsis_corr_method:
+        methods.append(mt.Math.get_correlation_methods_from_name(method))
+    if len(methods) > 0:
+        decision_matrix_builder.set_correlation_methods(methods)
+
+    # Build the decision matrix
+    decision_matrix = decision_matrix_builder.build()
+
+    # Compute topsis
+    ts = mt.Math.TOPSIS(
+        decision_matrix,
+        [criterion.get_weight() for criterion in criteria], 
+        [criterion.get_direction() for criterion in criteria]
+    )
+    ts.topsis()
+    
+    scaled_df = pd.DataFrame()
+    for alternative in alternatives:
+        scaled_df[alternative.get_name()] = alternative.get_data(df)[0]
 
     old_cols = df[["name", "bugs"]]
     scaled_df = scaled_df.join(old_cols)
 
     # Set XP to 1 day for all versions that are too short (avoid inf values in dataframe)
     scaled_df['avg_team_xp'] = scaled_df['avg_team_xp'].replace({0:1})
-    scaled_df["risk_assessment"] = (
-        (scaled_df["bug_velocity"] * 90) +
-         (scaled_df["changes"] * 20) +
-         ((1 / scaled_df["avg_team_xp"]) * 0.008) +
-         (scaled_df["lizard_avg_complexity"] * 40) +
-         (scaled_df["code_churn_avg"] * 20)
-    )
+    scaled_df["risk_assessment"] = 0
+    for alternative in alternatives:
+        # print(ts.get_coef_from_label(alternative.get_name()))
+        scaled_df["risk_assessment"] += scaled_df[alternative.get_name()] * ts.get_coef_from_label(alternative.get_name())
 
     # Return risk assessment along with median and max risk scores for all versions
     median_risk = scaled_df["risk_assessment"].median()
     max_risk = scaled_df["risk_assessment"].max()
     risk_score = scaled_df.loc[(scaled_df["name"] == configuration.next_version_name)]
-    return {
-        "median": math.ceil(median_risk),
-        "max": math.ceil(max_risk),
-        "score": math.ceil(risk_score.iloc[0]['risk_assessment'])}
+    output = {
+        "median": median_risk,
+        "max": max_risk,
+        "score": risk_score.iloc[0]['risk_assessment']}    
+    print("risk asseeement = ", output)
+    return output
 
 @timeit
 def compute_bugvelocity_last_30_days(session, project_id:int)->pd.DataFrame:
