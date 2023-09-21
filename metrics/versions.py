@@ -222,6 +222,7 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     # Calculate risk assessment for each alternative
     for alternative in alternatives:
         scaled_df["risk_assessment"] += scaled_df[alternative.get_name()] * ts.get_coef_from_label(alternative.get_name())
+    scaled_df["risk_assessment"] = scaled_df["risk_assessment"] * 100
 
     # Return risk assessment along with median and max risk scores for all versions
     median_risk = scaled_df["risk_assessment"].median()
