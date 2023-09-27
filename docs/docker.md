@@ -8,6 +8,14 @@ To build your latest docker image run the following command :
 docker build -t optittm/bugprediction:latest .
 ```
 
+## Run unit tests
+
+To run the unit tests from the image, execute the command :
+
+```
+docker run --rm --name bugprediction --entrypoint python optittm/bugprediction -m unittest discover tests
+```
+
 ## Launch container with this image
 
 Execute **bugprediction** command by using docker thanks to this command on Linux:

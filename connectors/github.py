@@ -1,5 +1,6 @@
 import logging
 from time import sleep, time
+from typing import List, Union
 import github
 
 from sqlalchemy import desc, update
@@ -8,6 +9,9 @@ import models
 from models.issue import Issue
 from models.version import Version
 from github import Github
+from github.GitRelease import GitRelease
+from github.Tag import Tag
+from github.PaginatedList import PaginatedList
 import datetime
 from connectors.git import GitConnector
 from utils.timeit import timeit
@@ -32,12 +36,14 @@ class GitHubConnector(GitConnector):
             labels = github.GithubObject.NotSet
 
         try:
-            return self.remote.get_issues(state="all", since=since, labels=labels)
+            return self.remote.get_issues(state="all", labels=labels)
         except github.GithubException.RateLimitExceededException:
             sleep(self.configuration.retry_delay)
             self._get_issues(since, labels)
 
-    def _get_releases(self, all=None, order_by=None, sort=None):
+    def _get_git_versions(
+        self, all=None, order_by=None, sort=None
+    ) -> List[Union[GitRelease, Tag]]:
         if not all:
             all = None
         if not order_by:
@@ -46,10 +52,13 @@ class GitHubConnector(GitConnector):
             sort = None
 
         try:
-            return self.remote.get_releases()
+            if self.configuration.use_all_tags:
+                return self.remote.get_tags()
+            else:
+                return self.remote.get_releases()
         except github.GithubException.RateLimitExceededException:
             sleep(self.configuration.retry_delay)
-            self._get_releases(all, order_by, sort)
+            self._get_git_versions(all, order_by, sort)
 
     @timeit
     def create_issues(self):
@@ -68,7 +77,7 @@ class GitHubConnector(GitConnector):
         )
         if last_issue is not None:
             # Update existing database by fetching new issues
-            if not self.configuration.issue_tags:
+            if len(self.configuration.issue_tags) == 0:
                 git_issues = self._get_issues(
                     since=last_issue.updated_at + datetime.timedelta(seconds=1)
                 )
@@ -79,7 +88,7 @@ class GitHubConnector(GitConnector):
                 )  # e.g. Filter by labels=['bug']
         else:
             # Create a database with all issues
-            if not self.configuration.issue_tags:
+            if len(self.configuration.issue_tags) == 0:
                 git_issues = self._get_issues()
             else:
                 git_issues = self._get_issues(
@@ -129,7 +138,7 @@ class GitHubConnector(GitConnector):
         Create versions into the database from GitHub tags
         """
         logging.info("GitHubConnector: create_versions")
-        releases = self._get_releases()
+        git_versions = self._get_git_versions()
         self._clean_project_existing_versions()
 
         versions = []
@@ -139,25 +148,34 @@ class GitHubConnector(GitConnector):
         forks = list(self.remote.get_forks())
         subscribers = list(self.remote.get_subscribers())
 
-        for release in releases.reversed:
+        for v in git_versions.reversed:
+            if type(v) is GitRelease:
+                v_name = v.title
+                v_tag = v.tag_name
+                v_end_date = v.published_at
+            elif type(v) is Tag:
+                v_name = v.name
+                v_tag = v.name
+                v_end_date = v.commit.commit.committer.date
+
             # Set UTC Timezone for previous release and release published_at when they are None
             if previous_release_published_at.tzinfo is None:
                 previous_release_published_at = (
                     previous_release_published_at.astimezone(datetime.timezone.utc)
                 )
 
-            if release.published_at.tzinfo is None:
-                release_published_at_timezone = release.published_at.astimezone(
+            if v_end_date.tzinfo is None:
+                release_published_at_timezone = v_end_date.astimezone(
                     datetime.timezone.utc
                 )
 
             versions.append(
                 Version(
                     project_id=self.project_id,
-                    name=release.title,
-                    tag=release.tag_name,
+                    name=v_name,
+                    tag=v_tag,
                     start_date=previous_release_published_at,
-                    end_date=release.published_at,
+                    end_date=v_end_date,
                     stars=len(
                         list(
                             filter(
@@ -204,7 +222,7 @@ class GitHubConnector(GitConnector):
                     ),
                 )
             )
-            previous_release_published_at = release.published_at
+            previous_release_published_at = v_end_date
 
         # Put current branch at the end of the list
         # Set UTC Timezone for previous release published_at when it's None
