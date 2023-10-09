@@ -157,6 +157,35 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
     logging.debug(metrics_statement)
     df = pd.read_sql(metrics_statement, session.get_bind())
     
+    if configuration.use_topsis:
+        scaled_df = get_scaled_df_topsis(configuration, df)
+    else:
+        scaled_df = get_scaled_static(df)
+
+    # Return risk assessment along with median and max risk scores for all versions
+    median_risk = scaled_df["risk_assessment"].median()
+    max_risk = scaled_df["risk_assessment"].max()
+    risk_score = scaled_df.loc[(scaled_df["name"] == configuration.next_version_name)]
+    
+    output = {
+        "median": median_risk,
+        "max": max_risk,
+        "score": risk_score.iloc[0]['risk_assessment']}    
+    print("risk asseeement = ", output)
+    return output
+
+def get_scaled_df_topsis(configuration: Configuration, df):
+    """
+    Get the scaled dataframe using topsis method
+
+    Parameters:
+    -----------
+    - configuration : Configuration
+        Project configuration
+    - df : Dataframe
+        dataframe red from sqlite database
+    """
+
     # Prepare data for topsis
     criteria_parser = CriterionParser()
     alternative_parser = AlternativesParser()
@@ -224,16 +253,51 @@ def assess_next_release_risk(session, configuration: Configuration, project_id:i
         scaled_df["risk_assessment"] += scaled_df[alternative.get_name()] * ts.get_coef_from_label(alternative.get_name())
     scaled_df["risk_assessment"] = scaled_df["risk_assessment"] * 100
 
-    # Return risk assessment along with median and max risk scores for all versions
-    median_risk = scaled_df["risk_assessment"].median()
-    max_risk = scaled_df["risk_assessment"].max()
-    risk_score = scaled_df.loc[(scaled_df["name"] == configuration.next_version_name)]
-    output = {
-        "median": median_risk,
-        "max": max_risk,
-        "score": risk_score.iloc[0]['risk_assessment']}    
-    print("risk asseeement = ", output)
-    return output
+    return scaled_df
+
+def get_scaled_static(df):
+    """
+    Get the scaled dataframe using static coefficients
+
+    Parameters:
+    -----------
+    - df : Dataframe
+        dataframe red from sqlite database
+    """
+
+    bug_velocity = np.array(df['bug_velocity'])
+    bug_velocity = preprocessing.normalize([bug_velocity])
+    changes = np.array(df['changes'])
+    changes = preprocessing.normalize([changes])
+    avg_team_xp = np.array(df['avg_team_xp'])
+    avg_team_xp = preprocessing.normalize([avg_team_xp])
+    lizard_avg_complexity = np.array(df['lizard_avg_complexity'])
+    lizard_avg_complexity = preprocessing.normalize([lizard_avg_complexity])
+    code_churn_avg = np.array(df['code_churn_avg'])
+    code_churn_avg = preprocessing.normalize([code_churn_avg])
+
+    scaled_df = pd.DataFrame({
+        'bug_velocity': bug_velocity[0],
+        'changes': changes[0],
+        'avg_team_xp': avg_team_xp[0],
+        'lizard_avg_complexity': lizard_avg_complexity[0],
+        'code_churn_avg': code_churn_avg[0]
+        })
+
+    old_cols = df[["name", "bugs"]]
+    scaled_df = scaled_df.join(old_cols)
+
+    # Set XP to 1 day for all versions that are too short (avoid inf values in dataframe)
+    scaled_df['avg_team_xp'] = scaled_df['avg_team_xp'].replace({0:1})
+    scaled_df["risk_assessment"] = (
+        (scaled_df["bug_velocity"] * 90) +
+         (scaled_df["changes"] * 20) +
+         ((1 / scaled_df["avg_team_xp"]) * 0.008) +
+         (scaled_df["lizard_avg_complexity"] * 40) +
+         (scaled_df["code_churn_avg"] * 20)
+    )
+
+    return scaled_df
 
 @timeit
 def compute_bugvelocity_last_30_days(session, project_id:int)->pd.DataFrame:
