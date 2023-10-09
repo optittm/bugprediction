@@ -40,7 +40,7 @@ To extend the functionality of this risk assessment method by adding new criteri
 
 3. To add a new criterion, create a new Python class that inherits from the abstract class Criterion defined in "criterion.py." The class should implement the following methods:
     - `get_name()`: This method should return the name used to retrieve the criterion's values using the `get_data` method.
-    - `get_direction()`: Return a constant that indicates whether the criterion should be maximized or minimized. You can use `mt.Math.TOPSIS.MAX` or `mt.Math.TOPSIS.MIN` from the provided mt module.
+    - `get_direction()`: Return a constant that indicates whether the criterion should be maximized or minimized. You can use `mt.Math.TOPSIS.MAX` or `mt.Math.TOPSIS.MIN` from the provided mt module. A criterion that minimizes the deployment risk should be minimized. Contrariwise, a criterion that maximizes the deployment risk should be maximized. For example, a high number of bugd maximizes the risk og deployement, so get_direction should return `mt.Math.TOPSIS.MIN` for the bugs criterion.
 
 4. After implementing the new criterion class, add an instance of it to the `criteria_map` dictionary in the `CriterionParser` class within "criterion.py." This dictionary maps criterion names to their respective classes.
 
