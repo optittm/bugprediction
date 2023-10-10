@@ -525,7 +525,6 @@ def datasetgen(dataset_dir, output_file, configuration: Configuration = Provide[
             configuration.source_repo = env_var.get("OTTM_SOURCE_REPO")
             configuration.source_project = env_var.get("OTTM_SOURCE_PROJECT")
             configuration.target_database = f"sqlite:///{project_path}/{configuration.source_project}.sqlite3"
-            print("Current db : ", configuration.source_project)
             print(configuration.target_database)
 
             # Créer un nouveau moteur SQLAlchemy
@@ -534,17 +533,34 @@ def datasetgen(dataset_dir, output_file, configuration: Configuration = Provide[
             # Créer une nouvelle session à partir du nouveau moteur
             Session = sessionmaker()
             Session.configure(bind=new_engine)
+            session = Session()
+
+            # Query to get the id of the version with the name "Next Release"
+            next_release_version = (
+                session.query(Version)
+                .filter(Version.project_id == project.project_id)
+                .filter(Version.name == "Next Release")
+                .first()
+            )
+
+            # Check if "Next Release" version exists for this project
+            if next_release_version is not None:
+                next_release_version_id = next_release_version.version_id
+                num_lines_query = session.query(Metric.lizard_total_nloc).filter(Metric.version_id == next_release_version_id)
+                num_lines = num_lines_query.scalar()
+            else:
+                # Handle case when "Next Release" version does not exist
+                num_lines = np.nan
+            print(num_lines)
 
             # Remplacer l'ancienne session par la nouvelle dans le conteneur
             container.session.override(providers.Singleton(Session))
             
-
             # Call the topsis command with the project-specific configuration
-            configuration.topsis_corr_method = []
             topsis_output = topsis()
 
             # Write topsis_output to CSV file
-            write_output_to_csv(configuration.source_repo, topsis_output, output_file)
+            write_output_to_csv(configuration.source_repo, num_lines, topsis_output, output_file)
 
 @cli.command()
 @inject
@@ -584,9 +600,9 @@ def display_topsis_weight():
 
 @inject
 def topsis( 
-           session = Provide[Container.session], 
-           configuration: Configuration = Provide[Container.configuration]
-           ):
+    session = Provide[Container.session], 
+    configuration: Configuration = Provide[Container.configuration]
+):
     """
     Perform TOPSIS analysis on a dataset.
 
@@ -668,8 +684,7 @@ def topsis(
     methods = []
     for method in configuration.topsis_corr_method:
         methods.append(mt.Math.get_correlation_methods_from_name(method))
-    
-    if methods or len(methods) > 0:
+    if len(methods) > 0:
         decision_matrix_builder.set_correlation_methods(methods)
 
     # Build the decision matrix
@@ -683,9 +698,15 @@ def topsis(
     )
     ts.topsis()
 
+
     # Calculate the weights of alternatives after TOPSIS analysis
     weight = ts.get_closeness()
-    weight = weight / sum(weight)
+    total_weight = sum(weight)
+    
+    if total_weight != 0:
+        weight = weight / total_weight
+    else:
+        weight = np.full(len(weight), np.nan)
 
     # Prepare the output dictionary containing the weights of alternatives
     output = {}
@@ -695,7 +716,7 @@ def topsis(
     return output
 
 
-def write_output_to_csv(project_name, output_dict, output_file_path):
+def write_output_to_csv(project_name, num_lines, output_dict, output_file_path):
     """
     Write the dictionary and project name to a CSV file.
 
@@ -715,7 +736,7 @@ def write_output_to_csv(project_name, output_dict, output_file_path):
 
     # Open the file in 'a' mode (append mode) to create if it doesn't exist
     with open(output_file_path, mode="a", newline="") as output_file:
-        fieldnames = ["Project"] + list(output_dict.keys())
+        fieldnames = ["Project", "num_lines"] + list(output_dict.keys())
         writer = csv.DictWriter(output_file, fieldnames=fieldnames)
 
         # Write header only if the file is newly created
@@ -723,7 +744,7 @@ def write_output_to_csv(project_name, output_dict, output_file_path):
             writer.writeheader()
 
         # Create a new row with the project name and dictionary values
-        row = {"Project": project_name}
+        row = {"Project": project_name, "num_lines": num_lines}
         row.update(output_dict)
         writer.writerow(row)
 
