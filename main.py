@@ -600,9 +600,9 @@ def display_topsis_weight():
 
 @inject
 def topsis( 
-           session = Provide[Container.session], 
-           configuration: Configuration = Provide[Container.configuration]
-           ):
+    session = Provide[Container.session], 
+    configuration: Configuration = Provide[Container.configuration]
+):
     """
     Perform TOPSIS analysis on a dataset.
 

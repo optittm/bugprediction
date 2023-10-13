@@ -77,6 +77,7 @@ class Configuration:
 
         self.legacy_minimum_days = self.__get_int("OTTM_LEGACY_MINIMUM_DAYS", 365)
 
+        self.use_topsis = self.__get_bool("OTTM_USE_TOPSIS", True)
         self.topsis_corr_method = self.__get_str_list("OTTM_CORR_METHOD")
         self.topsis_criteria = self.__get_str_list("OTTM_CRITERIA")
         self.topsis_alternatives = self.__get_str_list("OTTM_ALTERNATIVES")
