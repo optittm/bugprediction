@@ -24,6 +24,7 @@ from sqlalchemy.orm import sessionmaker
 from dependency_injector import providers
 from exceptions.topsis_configuration import InvalidAlternativeError, InvalidCriterionError, MissingWeightError, NoAlternativeProvidedError, NoCriteriaProvidedError
 from utils.alternatives import AlternativesParser
+from metrics.versions import get_scaled_df_topsis
 
 from utils.container import Container
 from exceptions.configurationvalidation import ConfigurationValidationException
@@ -485,6 +486,110 @@ def main():
 #####################################################################
 # For research purposes only                                        #
 #####################################################################
+@cli.command()
+@click.option("--dataset-dir", default="./data/dataset", help="The path to the dataset directory.")
+@click.option("--output-file", default="./data/research/topsis_output.csv", help="The name of the output CSV file.")
+@inject
+def risk_assessment_dataset_gen(dataset_dir, output_file, configuration: Configuration = Provide[Container.configuration]):
+    """
+    Generate datasets for TOPSIS analysis from multiple projects in the dataset directory.
+
+    Args:
+        dataset_dir (str): The path to the dataset directory.
+        output_file (str): The name of the output CSV file.
+        configuration (Configuration, optional): The configuration settings for TOPSIS analysis. Defaults to the provided container configuration.
+
+    Note:
+        This command iterates through the projects in the dataset directory and loads the corresponding .env configuration files.
+        It uses the configuration from the .env files and constructs a SQLite database path for each project.
+        The TOPSIS analysis is then performed for each project using the specific configuration, and the results are written to CSV files.
+        The output CSV files are saved in the respective project folders.
+
+    Raises:
+        None.
+    """
+    output_data = pd.DataFrame(columns=['project', 'name', 'bugs', 'risk_assessment'])
+    
+    for project_folder in os.listdir(dataset_dir):
+        # print(project_folder)
+        project_path = os.path.join(dataset_dir, project_folder)
+
+        # Check if it's a directory and contains .env file
+        if os.path.isdir(project_path) and ".env" in os.listdir(project_path):
+            # Load the .env configuration for this project
+            env_file_path = os.path.join(project_path, ".env")
+            env_var = dotenv_values(env_file_path)
+
+            configuration.source_repo_scm = env_var.get("OTTM_SOURCE_REPO_SCM")
+            configuration.source_repo_url = env_var.get("OTTM_SOURCE_REPO_URL")
+            configuration.current_branch = env_var.get("OTTM_CURRENT_BRANCH")
+            configuration.source_bugs = env_var.get("OTTM_SOURCE_BUGS")
+            configuration.source_repo = env_var.get("OTTM_SOURCE_REPO")
+            configuration.source_project = env_var.get("OTTM_SOURCE_PROJECT")
+            configuration.target_database = f"sqlite:///{project_path}/{configuration.source_project}.sqlite3"
+            print(configuration.target_database)
+
+            # Créer un nouveau moteur SQLAlchemy
+            new_engine = db.create_engine(configuration.target_database)
+
+            # Créer une nouvelle session à partir du nouveau moteur
+            Session = sessionmaker()
+            Session.configure(bind=new_engine)
+            session = Session()
+
+            # Query to get the id of the version with the name "Next Release"
+            next_release_version = (
+                session.query(Version)
+                .filter(Version.project_id == project.project_id)
+                .filter(Version.name == "Next Release")
+                .first()
+            )
+
+            # Check if "Next Release" version exists for this project
+            if next_release_version is not None:
+                next_release_version_id = next_release_version.version_id
+                num_lines_query = session.query(Metric.lizard_total_nloc).filter(Metric.version_id == next_release_version_id)
+                num_lines = num_lines_query.scalar()
+            else:
+                # Handle case when "Next Release" version does not exist
+                num_lines = np.nan
+            print(num_lines)
+
+            # Remplacer l'ancienne session par la nouvelle dans le conteneur
+            container.session.override(providers.Singleton(Session))
+            
+            # getting df
+            excluded_versions = configuration.exclude_versions
+            included_and_current_versions = get_included_and_current_versions_filter(
+                session, configuration
+            )
+
+            # Get the version metrics and the average cyclomatic complexity
+            metrics_statement = (
+                session.query(Version, Metric)
+                .filter(Version.project_id == project.project_id)
+                .filter(Version.include_filter(included_and_current_versions))
+                .filter(Version.exclude_filter(excluded_versions))
+                .join(Metric, Metric.version_id == Version.version_id)
+                .order_by(Version.start_date.asc())
+                .statement
+            )
+            logging.debug(metrics_statement)
+            df = pd.read_sql(metrics_statement, session.get_bind())
+            
+            # Vérifiez si toutes les valeurs dans le DataFrame 'df' ne sont pas NaN
+            if not df.empty :
+                scaled_df = get_scaled_df_topsis(configuration, df)
+                print(output_file)
+                
+                # Create the directory if it does not exist
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+                output_data = pd.concat([output_data, pd.DataFrame({'project': project_folder, 'name': scaled_df['name'], 'bugs': scaled_df['bugs'], 'risk_assessment': scaled_df['risk_assessment']})], ignore_index=True)
+    print(output_data)
+    output_data.to_csv(output_file, index=False)
+
+
 
 @cli.command()
 @click.option("--dataset-dir", default="./data/dataset", help="The path to the dataset directory.")
