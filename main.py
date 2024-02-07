@@ -126,6 +126,138 @@ def source_bugs_check(configuration) -> None:
         raise ConfigurationValidationException(
             "No synchro because parameter 'OTTM_SOURCE_BUGS' no defined"
         )
+    
+def fct_populate(
+       skip_versions,
+        session,
+        configuration,
+        git_factory_provider,
+        jira_connector_provider,
+        glpi_connector_provider,
+        ck_connector_provider,
+        pylint_connector_provider,
+        file_analyzer_provider,
+        jpeek_connector_provider,
+        legacy_connector_provider,
+        codemaat_connector_provider,
+        pdepend_connector_provider,
+        radon_connector_provider,
+        survey_connector_provider,
+):
+    """Populate the database with the provided configuration"""
+    
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == 'jira':
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+        elif source_bugs.strip() == 'glpi':
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+    
+    # survey = survey_connector_provider()
+
+    # Checkout, execute the tool and inject CSV result into the database
+    # with tempfile.TemporaryDirectory() as tmp_dir:
+    tmp_dir = tempfile.mkdtemp()
+    logging.info("created temporary directory: " + tmp_dir)
+    repo_dir = os.path.join(tmp_dir, configuration.source_project)
+
+    git = instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
+
+    for source_bugs in configuration.source_bugs:
+        if source_bugs.strip() == "jira":
+            # Populate issue table in database with Jira issues
+            jira: JiraConnector = jira_connector_provider(project.project_id)
+            jira.create_issues()
+        elif source_bugs.strip() == "glpi":
+            # Populate issue table in database with Glpi issues
+            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
+            glpi.create_issues()
+        elif source_bugs.strip() == "git":
+            git.create_issues()
+            # if we use code maat git.setup_aliases(configuration.author_alias)
+
+    git.populate_db(skip_versions)
+    # survey.populate_comments()
+
+    # List the versions and checkout each one of them
+    versions = session.query(Version).filter(Version.project_id == project.project_id).all()
+    restrict_folder = RestrictFolder(versions, configuration)
+    for version in versions:
+        process = subprocess.run([configuration.scm_path, "checkout", version.tag],
+                                stdout=subprocess.PIPE,
+                                cwd=repo_dir)
+        logging.info('Executed command line: ' + ' '.join(process.args))
+
+        with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version), 
+                                       restrict_folder.get_exclude_folders(version)) as tmp_work_dir:
+            
+            legacy = legacy_connector_provider(project.project_id, tmp_work_dir)
+            legacy.get_legacy_files(version)
+
+            # Get statistics from git log with codemaat
+            # codemaat = codemaat_connector_provider(repo_dir, version)
+            # codemaat.analyze_git_log()
+
+            # Get statistics with lizard
+            lizard = file_analyzer_provider(directory=tmp_work_dir, version=version)
+            lizard.analyze_source_code()
+
+            if configuration.language.lower() == "java":
+                # Get metrics with CK
+                ck = ck_connector_provider(directory=tmp_work_dir, version=version)
+                ck.analyze_source_code()
+
+                # Get metrics with JPeek
+                # jp = jpeek_connector_provider(directory=tmp_work_dir, version=version)
+                # jp.analyze_source_code()
+
+            elif configuration.language.lower() == "php":
+                # Get metrics with PDepend
+                pdepend = pdepend_connector_provider(
+                    directory=tmp_work_dir, version=version
+                )
+                pdepend.analyze_source_code()
+
+            elif configuration.language.lower() == "python":
+                # Get metrics with Radon
+                radon = radon_connector_provider(
+                    directory=tmp_work_dir, version=version
+                )
+                radon.analyze_source_code()
+
+                # Get metrics with Pylint
+                pylint = pylint_connector_provider(
+                    directory=tmp_work_dir, version=version
+                )
+                pylint.analyze_source_code()
+
+            else:
+                raise Exception(f"Unsupported language: {configuration.language}")
+
+
+def create_report(
+    output,
+    report_name,
+    html_exporter_provider,
+    ml_html_exporter_provider,
+):
+    """Create a basic HTML report"""
+    MlFactory.create_predicting_ml_model(project.project_id)
+    MetricFactory.create_metrics()
+    exporter = html_exporter_provider(output)
+    os.makedirs(output, exist_ok=True)
+    if report_name == "churn":
+        exporter.generate_churn_report(project, "churn.html")
+    elif report_name == "release":
+        exporter.generate_release_report(project, "release.html")
+    elif report_name == "bugvelocity":
+        exporter.generate_bugvelocity_report(project, "bugvelocity.html")
+    elif report_name == "kmeans":
+        exporter = ml_html_exporter_provider(output)
+        exporter.generate_kmeans_release_report(project, "kmeans.html")
+    else:
+        click.echo("This report doesn't exist")
+    logging.info(f"Created report {output}/{report_name}.html")
+
 
 
 @click.group()
@@ -195,23 +327,12 @@ def report(
     ml_html_exporter_provider=Provide[Container.ml_html_exporter_provider.provider],
 ):
     """Create a basic HTML report"""
-    MlFactory.create_predicting_ml_model(project.project_id)
-    MetricFactory.create_metrics()
-    exporter = html_exporter_provider(output)
-    os.makedirs(output, exist_ok=True)
-    if report_name == "churn":
-        exporter.generate_churn_report(project, "churn.html")
-    elif report_name == "release":
-        exporter.generate_release_report(project, "release.html")
-    elif report_name == "bugvelocity":
-        exporter.generate_bugvelocity_report(project, "bugvelocity.html")
-    elif report_name == "kmeans":
-        exporter = ml_html_exporter_provider(output)
-        exporter.generate_kmeans_release_report(project, "kmeans.html")
-    else:
-        click.echo("This report doesn't exist")
-    logging.info(f"Created report {output}/{report_name}.html")
-
+    create_report(
+        output,
+        report_name,
+        html_exporter_provider,
+        ml_html_exporter_provider,
+    )
 
 @cli.command(name="import")
 @click.option(
@@ -386,101 +507,125 @@ def populate(
     radon_connector_provider=Provide[Container.radon_connector_provider.provider],
     survey_connector_provider=Provide[Container.survey_connector_provider.provider],
 ):
-    """Populate the database with the provided configuration"""
     
-    for source_bugs in configuration.source_bugs:
-        if source_bugs.strip() == 'jira':
-            jira: JiraConnector = jira_connector_provider(project.project_id)
-        elif source_bugs.strip() == 'glpi':
-            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
-    
-    # survey = survey_connector_provider()
+    fct_populate(
+        skip_versions,
+        session,
+        configuration,
+        git_factory_provider,
+        jira_connector_provider,
+        glpi_connector_provider,
+        ck_connector_provider,
+        pylint_connector_provider,
+        file_analyzer_provider,
+        jpeek_connector_provider,
+        legacy_connector_provider,
+        codemaat_connector_provider,
+        pdepend_connector_provider,
+        radon_connector_provider,
+        survey_connector_provider,
+    )
 
-    # Checkout, execute the tool and inject CSV result into the database
-    # with tempfile.TemporaryDirectory() as tmp_dir:
-    tmp_dir = tempfile.mkdtemp()
-    logging.info("created temporary directory: " + tmp_dir)
-    repo_dir = os.path.join(tmp_dir, configuration.source_project)
 
-    git = instanciate_git_connector(configuration, git_factory_provider, tmp_dir, repo_dir)
+#####################################################################
+# For test purposes only                                            #
+#####################################################################
+@cli.command()
+@click.option(
+    "--skip-versions",
+    is_flag=True,
+    default=False,
+    help="Skip the step <populate Version table>",
+)
+@click.pass_context
+@inject
+def testingtraining(
+    ctx,
+    skip_versions,
+    session=Provide[Container.session],
+    configuration=Provide[Container.configuration],
+    git_factory_provider=Provide[Container.git_factory_provider.provider],
+    jira_connector_provider=Provide[Container.jira_connector_provider.provider],
+    glpi_connector_provider=Provide[Container.glpi_connector_provider.provider],
+    ck_connector_provider=Provide[Container.ck_connector_provider.provider],
+    pylint_connector_provider=Provide[Container.pylint_connector_provider.provider],
+    file_analyzer_provider=Provide[Container.file_analyzer_provider.provider],
+    jpeek_connector_provider=Provide[Container.jpeek_connector_provider.provider],
+    legacy_connector_provider=Provide[Container.legacy_connector_provider.provider],
+    codemaat_connector_provider=Provide[Container.codemaat_connector_provider.provider],
+    pdepend_connector_provider=Provide[Container.pdepend_connector_provider.provider],
+    radon_connector_provider=Provide[Container.radon_connector_provider.provider],
+    survey_connector_provider=Provide[Container.survey_connector_provider.provider],
+    ml_factory_provider=Provide[Container.ml_factory_provider.provider],
+    html_exporter_provider=Provide[Container.html_exporter_provider.provider],
+    ml_html_exporter_provider=Provide[Container.ml_html_exporter_provider.provider]
+):
+    fct_populate(
+        skip_versions,
+        session,
+        configuration,
+        git_factory_provider,
+        jira_connector_provider,
+        glpi_connector_provider,
+        ck_connector_provider,
+        pylint_connector_provider,
+        file_analyzer_provider,
+        jpeek_connector_provider,
+        legacy_connector_provider,
+        codemaat_connector_provider,
+        pdepend_connector_provider,
+        radon_connector_provider,
+        survey_connector_provider,
+    )
+    # train(ctx, "bugvelocity", ml_factory_provider=Provide[Container.ml_factory_provider.provider])
+    #   """Predict next value with a trained model"""
+    MlFactory.create_training_ml_model("bugvelocity")
+    MetricFactory.create_metrics()
+    model = ml_factory_provider(project.project_id)
+    value = model.predict()
+    click.echo("Predicted value : " + str(value))
 
-    for source_bugs in configuration.source_bugs:
-        if source_bugs.strip() == "jira":
-            # Populate issue table in database with Jira issues
-            jira: JiraConnector = jira_connector_provider(project.project_id)
-            jira.create_issues()
-        elif source_bugs.strip() == "glpi":
-            # Populate issue table in database with Glpi issues
-            glpi: GlpiConnector = glpi_connector_provider(project.project_id)
-            glpi.create_issues()
-        elif source_bugs.strip() == "git":
-            git.create_issues()
-            # if we use code maat git.setup_aliases(configuration.author_alias)
+    # train(ctx, "codemetrics", ml_factory_provider=Provide[Container.ml_factory_provider.provider])
+    #   """Predict next value with a trained model"""
+    MlFactory.create_training_ml_model("codemetrics")
+    MetricFactory.create_metrics()
+    model = ml_factory_provider(project.project_id)
+    value = model.predict()
+    click.echo("Predicted value : " + str(value))
+  
+    # predict(ctx, "bugvelocity", ml_factory_provider=Provide[Container.ml_factory_provider.provider])
+    #  """Predict next value with a trained model"""
+    MlFactory.create_training_ml_model("bugvelocity")
+    MetricFactory.create_metrics()
+    model = ml_factory_provider(project.project_id)
+    value = model.predict()
+    click.echo("Predicted value : " + str(value))
 
-    git.populate_db(skip_versions)
-    # survey.populate_comments()
+    # predict(ctx, "codemetrics", ml_factory_provider=Provide[Container.ml_factory_provider.provider])
+    #  """Predict next value with a trained model"""
+    MlFactory.create_training_ml_model("codemetrics")
+    MetricFactory.create_metrics()
+    model = ml_factory_provider(project.project_id)
+    value = model.predict()
+    click.echo("Predicted value : " + str(value))
 
-    # List the versions and checkout each one of them
-    versions = session.query(Version).filter(Version.project_id == project.project_id).all()
-    restrict_folder = RestrictFolder(versions, configuration)
-    for version in versions:
-        process = subprocess.run([configuration.scm_path, "checkout", version.tag],
-                                stdout=subprocess.PIPE,
-                                cwd=repo_dir)
-        logging.info('Executed command line: ' + ' '.join(process.args))
-
-        with TmpDirCopyFilteredWithEnv(repo_dir, restrict_folder.get_include_folders(version), 
-                                       restrict_folder.get_exclude_folders(version)) as tmp_work_dir:
-            
-            legacy = legacy_connector_provider(project.project_id, tmp_work_dir)
-            legacy.get_legacy_files(version)
-
-            # Get statistics from git log with codemaat
-            # codemaat = codemaat_connector_provider(repo_dir, version)
-            # codemaat.analyze_git_log()
-
-            # Get statistics with lizard
-            lizard = file_analyzer_provider(directory=tmp_work_dir, version=version)
-            lizard.analyze_source_code()
-
-            if configuration.language.lower() == "java":
-                # Get metrics with CK
-                ck = ck_connector_provider(directory=tmp_work_dir, version=version)
-                ck.analyze_source_code()
-
-                # Get metrics with JPeek
-                # jp = jpeek_connector_provider(directory=tmp_work_dir, version=version)
-                # jp.analyze_source_code()
-
-            elif configuration.language.lower() == "php":
-                # Get metrics with PDepend
-                pdepend = pdepend_connector_provider(
-                    directory=tmp_work_dir, version=version
-                )
-                pdepend.analyze_source_code()
-
-            elif configuration.language.lower() == "python":
-                # Get metrics with Radon
-                radon = radon_connector_provider(
-                    directory=tmp_work_dir, version=version
-                )
-                radon.analyze_source_code()
-
-                # Get metrics with Pylint
-                pylint = pylint_connector_provider(
-                    directory=tmp_work_dir, version=version
-                )
-                pylint.analyze_source_code()
-
-            else:
-                raise Exception(f"Unsupported language: {configuration.language}")
+    # report(ctx,
+    # ".",
+    # "release",
+    # html_exporter_provider=Provide[Container.html_exporter_provider.provider],
+    # ml_html_exporter_provider=Provide[Container.ml_html_exporter_provider.provider])
+    create_report(
+        ".",
+        "release",
+        html_exporter_provider,
+        ml_html_exporter_provider,
+    )
 
 
 @click.command()
 @inject
 def main():
     pass
-
 
 #####################################################################
 # For research purposes only                                        #

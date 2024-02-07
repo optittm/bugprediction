@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  bdd:
+    container_name: "bugprediction"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    #restart: always
+    command:
+      - testingtraining
