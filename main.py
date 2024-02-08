@@ -127,7 +127,7 @@ def source_bugs_check(configuration) -> None:
             "No synchro because parameter 'OTTM_SOURCE_BUGS' no defined"
         )
     
-def fct_populate(
+def populating(
        skip_versions,
         session,
         configuration,
@@ -232,6 +232,24 @@ def fct_populate(
 
             else:
                 raise Exception(f"Unsupported language: {configuration.language}")
+            
+
+def training(model_name, ml_factory_provider):
+    """Train a model"""
+    MlFactory.create_training_ml_model(model_name)
+    MetricFactory.create_metrics()
+    model = ml_factory_provider(project.project_id)
+    model.train()
+    click.echo("Model was trained")
+
+
+def predicting(model_name, ml_factory_provider):
+    """Predict next value with a trained model"""
+    MlFactory.create_training_ml_model(model_name)
+    MetricFactory.create_metrics()
+    model = ml_factory_provider(project.project_id)
+    value = model.predict()
+    click.echo("Predicted value : " + str(value))
 
 
 def create_report(
@@ -363,12 +381,7 @@ def import_file(
 def train(
     ctx, model_name, ml_factory_provider=Provide[Container.ml_factory_provider.provider]
 ):
-    """Train a model"""
-    MlFactory.create_training_ml_model(model_name)
-    MetricFactory.create_metrics()
-    model = ml_factory_provider(project.project_id)
-    model.train()
-    click.echo("Model was trained")
+    training(model_name, ml_factory_provider)
 
 
 @cli.command()
@@ -378,12 +391,7 @@ def train(
 def predict(
     ctx, model_name, ml_factory_provider=Provide[Container.ml_factory_provider.provider]
 ):
-    """Predict next value with a trained model"""
-    MlFactory.create_training_ml_model(model_name)
-    MetricFactory.create_metrics()
-    model = ml_factory_provider(project.project_id)
-    value = model.predict()
-    click.echo("Predicted value : " + str(value))
+    predicting(model_name, ml_factory_provider)
 
 
 @cli.command()
@@ -508,7 +516,7 @@ def populate(
     survey_connector_provider=Provide[Container.survey_connector_provider.provider],
 ):
     
-    fct_populate(
+    populating(
         skip_versions,
         session,
         configuration,
@@ -539,7 +547,7 @@ def populate(
 )
 @click.pass_context
 @inject
-def testingtraining(
+def allprocess(
     ctx,
     skip_versions,
     session=Provide[Container.session],
@@ -560,7 +568,8 @@ def testingtraining(
     html_exporter_provider=Provide[Container.html_exporter_provider.provider],
     ml_html_exporter_provider=Provide[Container.ml_html_exporter_provider.provider]
 ):
-    fct_populate(
+    
+    populating(
         skip_versions,
         session,
         configuration,
@@ -577,45 +586,17 @@ def testingtraining(
         radon_connector_provider,
         survey_connector_provider,
     )
-    # train(ctx, "bugvelocity", ml_factory_provider=Provide[Container.ml_factory_provider.provider])
-    #   """Predict next value with a trained model"""
-    MlFactory.create_training_ml_model("bugvelocity")
-    MetricFactory.create_metrics()
-    model = ml_factory_provider(project.project_id)
-    value = model.predict()
-    click.echo("Predicted value : " + str(value))
 
-    # train(ctx, "codemetrics", ml_factory_provider=Provide[Container.ml_factory_provider.provider])
-    #   """Predict next value with a trained model"""
-    MlFactory.create_training_ml_model("codemetrics")
-    MetricFactory.create_metrics()
-    model = ml_factory_provider(project.project_id)
-    value = model.predict()
-    click.echo("Predicted value : " + str(value))
-  
-    # predict(ctx, "bugvelocity", ml_factory_provider=Provide[Container.ml_factory_provider.provider])
-    #  """Predict next value with a trained model"""
-    MlFactory.create_training_ml_model("bugvelocity")
-    MetricFactory.create_metrics()
-    model = ml_factory_provider(project.project_id)
-    value = model.predict()
-    click.echo("Predicted value : " + str(value))
+    training("bugvelocity", ml_factory_provider)
+    
+    training("codemetrics", ml_factory_provider)
 
-    # predict(ctx, "codemetrics", ml_factory_provider=Provide[Container.ml_factory_provider.provider])
-    #  """Predict next value with a trained model"""
-    MlFactory.create_training_ml_model("codemetrics")
-    MetricFactory.create_metrics()
-    model = ml_factory_provider(project.project_id)
-    value = model.predict()
-    click.echo("Predicted value : " + str(value))
+    predicting("bugvelocity", ml_factory_provider)
 
-    # report(ctx,
-    # ".",
-    # "release",
-    # html_exporter_provider=Provide[Container.html_exporter_provider.provider],
-    # ml_html_exporter_provider=Provide[Container.ml_html_exporter_provider.provider])
+    predicting("codemetrics", ml_factory_provider)
+
     create_report(
-        ".",
+        "data/",
         "release",
         html_exporter_provider,
         ml_html_exporter_provider,

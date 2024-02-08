@@ -6,5 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile
     #restart: always
-    command:
-      - testingtraining
+    command: allprocess
+    volumes:
+      - ./data:/home/optittm-user/data
