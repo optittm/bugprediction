@@ -32,10 +32,14 @@ class Configuration:
 
         self.source_repo_scm = self.__get_repo_scm("OTTM_SOURCE_REPO_SCM")
         self.use_all_tags = self.__get_bool("OTTM_SCM_USE_ALL_TAGS", False)
-        self.source_project  = self.__get_required_value("OTTM_SOURCE_PROJECT")
-        self.source_repo     = self.__get_required_value("OTTM_SOURCE_REPO")
+        # self.source_project  = self.__get_required_value("OTTM_SOURCE_PROJECT")
+        # self.source_repo     = self.__get_required_value("OTTM_SOURCE_REPO")
+        # self.current_branch  = self.__get_required_value("OTTM_CURRENT_BRANCH")
+        # self.source_repo_url = self.__get_required_value("OTTM_SOURCE_REPO_URL")
+        self.source_project  = os.getenv("OTTM_SOURCE_PROJECT","")
+        self.source_repo     = os.getenv("OTTM_SOURCE_REPO", "")
         self.current_branch  = self.__get_required_value("OTTM_CURRENT_BRANCH")
-        self.source_repo_url = self.__get_required_value("OTTM_SOURCE_REPO_URL")
+        self.source_repo_url = os.getenv("OTTM_SOURCE_REPO_URL", "")
         self.source_bugs = self.__get_str_list("OTTM_SOURCE_BUGS")
 
         self.survey_back_api_url = os.getenv("SURVEY_BACK_API_URL", "")
@@ -82,6 +86,9 @@ class Configuration:
         self.topsis_criteria = self.__get_str_list("OTTM_CRITERIA")
         self.topsis_alternatives = self.__get_str_list("OTTM_ALTERNATIVES")
         self.topsis_weigths = self.__get_str_list("OTTM_WEIGTHS")
+
+        self.ottm_api_server_url = os.getenv("OTTM_API_SERVER", "")
+        self.ottm_api_server_token = os.getenv("OTTM_API_TOKEN", "")
 
     @staticmethod
     def __get_log_level(env_var):

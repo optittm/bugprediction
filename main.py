@@ -277,6 +277,21 @@ def create_report(
     logging.info(f"Created report {output}/{report_name}.html")
 
 
+def generate_metrics(
+    report_name,
+    metrics_exporter_provider,
+):
+    """Generate metrics"""
+    MlFactory.create_predicting_ml_model(project.project_id)
+    MetricFactory.create_metrics()
+    exporter = metrics_exporter_provider()
+    if report_name == "release":
+        metrics = exporter.generate_metrics_release(project)
+    else:
+        click.echo("This report doesn't exist")
+
+    return metrics
+
 
 @click.group()
 @click.pass_context
@@ -545,11 +560,17 @@ def populate(
     default=False,
     help="Skip the step <populate Version table>",
 )
+@click.option(
+    "--report-name",
+    default="release",
+    help="Name of the report (release, churn, bugvelocity)",
+)
 @click.pass_context
 @inject
 def allprocess(
     ctx,
     skip_versions,
+    report_name,
     session=Provide[Container.session],
     configuration=Provide[Container.configuration],
     git_factory_provider=Provide[Container.git_factory_provider.provider],
@@ -565,42 +586,67 @@ def allprocess(
     radon_connector_provider=Provide[Container.radon_connector_provider.provider],
     survey_connector_provider=Provide[Container.survey_connector_provider.provider],
     ml_factory_provider=Provide[Container.ml_factory_provider.provider],
-    html_exporter_provider=Provide[Container.html_exporter_provider.provider],
-    ml_html_exporter_provider=Provide[Container.ml_html_exporter_provider.provider]
+    metrics_exporter_provider=Provide[Container.metrics_exporter_provider.provider],
+    ottm_api_server_connector_provider=Provide[Container.ottm_api_server_connector_provider.provider]
 ):
+    api_server = ottm_api_server_connector_provider()
     
-    populating(
-        skip_versions,
-        session,
-        configuration,
-        git_factory_provider,
-        jira_connector_provider,
-        glpi_connector_provider,
-        ck_connector_provider,
-        pylint_connector_provider,
-        file_analyzer_provider,
-        jpeek_connector_provider,
-        legacy_connector_provider,
-        codemaat_connector_provider,
-        pdepend_connector_provider,
-        radon_connector_provider,
-        survey_connector_provider,
-    )
+    metrics_array = []
+    projects = api_server.get_projects()
+    for project in projects:
+        tool = api_server.get_tool_by_project(project['id'])
+        if tool is not None :
+            if "github" in tool['api'] :
+                configuration.source_repo_scm = "github"
+                configuration.source_project = tool['project_name'].split('/')[1]
+                configuration.source_repo = tool['project_name']
+                configuration.source_repo_url = "/".join([tool['api'], tool['project_name']])
+                configuration.scm_token = tool['token'] if tool['auth_mode'] == 'token' else ''
+            
+            if "gitlab" in tool['api']:
+                configuration.source_repo_scm = "gitlab"
+                configuration.source_project = tool['project_name'].split('/')[-1]
+                configuration.source_repo = tool['project_name']
+                configuration.source_repo_url = "/".join([tool['api'], tool['project_name']])
+                configuration.scm_token = tool['token'] if tool['auth_mode'] == 'token' else ''
 
-    training("bugvelocity", ml_factory_provider)
+            GitConnectorFactory.create_git_connector()
     
-    training("codemetrics", ml_factory_provider)
+            populating(
+                skip_versions,
+                session,
+                configuration,
+                git_factory_provider,
+                jira_connector_provider,
+                glpi_connector_provider,
+                ck_connector_provider,
+                pylint_connector_provider,
+                file_analyzer_provider,
+                jpeek_connector_provider,
+                legacy_connector_provider,
+                codemaat_connector_provider,
+                pdepend_connector_provider,
+                radon_connector_provider,
+                survey_connector_provider,
+            )
 
-    predicting("bugvelocity", ml_factory_provider)
+            training("bugvelocity", ml_factory_provider)
+            
+            training("codemetrics", ml_factory_provider)
 
-    predicting("codemetrics", ml_factory_provider)
+            predicting("bugvelocity", ml_factory_provider)
 
-    create_report(
-        "data/",
-        "release",
-        html_exporter_provider,
-        ml_html_exporter_provider,
-    )
+            predicting("codemetrics", ml_factory_provider)
+
+            metrics = generate_metrics(
+                report_name,
+                metrics_exporter_provider,
+            )
+            metrics['project'] = project['id']
+
+            metrics_array.append(metrics)
+
+    api_server.post_data(metrics_array)
 
 
 @click.command()

@@ -1,6 +1,7 @@
 from dependency_injector import containers, providers
 from configuration import Configuration
 from dotenv import load_dotenv
+from exporters.metrics import MetricsExporter
 from sqlalchemy.orm import sessionmaker
 from connectors.radon import RadonConnector
 from connectors.survey import SurveyConnector
@@ -21,6 +22,7 @@ from exporters.html import HtmlExporter
 from exporters.flatfile import FlatFileExporter
 from connectors.pdepend import PDependConnector
 from metrics.metric_common import MetricCommon
+from connectors.ottmapiserver import OttmApiServerConnector
 
 class Container(containers.DeclarativeContainer):
     load_dotenv()
@@ -130,5 +132,19 @@ class Container(containers.DeclarativeContainer):
         PDependConnector,
         session = session,
         config = configuration
+    )
+
+    ottm_api_server_connector_provider = providers.Factory(
+        OttmApiServerConnector,
+        session = session,
+        configuration = configuration
+    )
+
+
+    metrics_exporter_provider = providers.Singleton(
+        MetricsExporter,
+        session = session,
+        configuration = configuration,
+        model = ml_factory_provider
     )
     
