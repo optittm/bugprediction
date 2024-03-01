@@ -1,6 +1,8 @@
+from datetime import datetime
 from distutils.version import Version
 from sqlalchemy.orm import Session
 import numpy as np
+from sqlalchemy.ext.declarative import DeclarativeMeta
 
 from configuration import Configuration
 from models.project import Project
@@ -89,7 +91,8 @@ class MetricsExporter:
         metrics = {
             "project": project.project_id,
             "model_name" : self.__model.name,
-            "current_release" : str(current_release.Version.name),
+            "current_release_version" : self.encoder_class(current_release.Version),
+            "current_release_metric" : self.encoder_class(current_release.Metric),
             "bugs_median" : bugs_median,
             "changes_median" : changes_median,
             "xp_devs_median" : xp_devs_median,
@@ -102,3 +105,28 @@ class MetricsExporter:
 
         return metrics
     
+
+    def encoder_class(self, obj):
+        """
+        Retrieve all attribut of a class
+
+        Parameters
+        ----------
+        obj : Class Object
+        """
+        _visited_objs = []
+
+        if isinstance(obj.__class__, DeclarativeMeta):
+
+            if obj in _visited_objs:
+                return None
+            _visited_objs.append(obj)
+
+            fields = {}
+            for field in [x for x in obj.__dict__ if not x.startswith('_') and x != 'metadata']:
+                if obj.__getattribute__(field) is not None:
+                    fields[field] = obj.__getattribute__(field)
+                    if isinstance(fields[field], datetime):
+                        fields[field] = fields[field].isoformat()
+
+            return fields

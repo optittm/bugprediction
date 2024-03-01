@@ -551,7 +551,7 @@ def populate(
 
 
 #####################################################################
-# For test purposes only                                            #
+# For OTTM purposes only                                            #
 #####################################################################
 @cli.command()
 @click.option(
@@ -567,7 +567,7 @@ def populate(
 )
 @click.pass_context
 @inject
-def allprocess(
+def ottmprocess(
     ctx,
     skip_versions,
     report_name,
@@ -643,6 +643,7 @@ def allprocess(
                 metrics_exporter_provider,
             )
             metrics['project'] = project['id']
+            metrics['source'] = configuration.source_repo_scm
 
             metrics_array.append(metrics)
 
